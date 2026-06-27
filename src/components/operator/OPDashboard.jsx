@@ -10,7 +10,7 @@ import { formatNumber } from '../../utils/helpers';
 
 const OPDashboard = () => {
   const { user } = useAuth();
-  const { hourlyOutputs, loadHourlyOutputs } = useProductions();
+  const { hourlyOutputs, loadHourlyOutputs, lots, loadLots, styles, loadStyles } = useProductions();
   const navigate = useNavigate();
   
   const [totalOutput, setTotalOutput] = useState(0);
@@ -18,6 +18,37 @@ const OPDashboard = () => {
   const [targetDaily, setTargetDaily] = useState(1080);
   const [loading, setLoading] = useState(true);
   const [userOutputs, setUserOutputs] = useState([]);
+  const [activeStyle, setActiveStyle] = useState('IVYS / HCPS');
+
+  // 🔥 Ambil data dari Leader (styles & lots)
+  useEffect(() => {
+    const fetchTargets = async () => {
+      try {
+        await loadStyles();
+        await loadLots();
+        
+        // Ambil target per jam dari styles (ambil yang pertama)
+        if (styles && styles.length > 0) {
+          const firstStyle = styles[0];
+          setTargetPerHour(firstStyle.target_per_hour || 135);
+          setActiveStyle(firstStyle.name || 'IVYS / HCPS');
+        }
+        
+        // Ambil target harian dari lots (total semua target)
+        if (lots && lots.length > 0) {
+          // Cari lot yang statusnya 'Berjalan' atau ambil semua
+          const activeLots = lots.filter(l => l.status === 'Berjalan');
+          const targetLots = activeLots.length > 0 ? activeLots : lots;
+          const totalTarget = targetLots.reduce((sum, lot) => sum + (lot.target_total || 0), 0);
+          setTargetDaily(totalTarget || 1080);
+        }
+      } catch (error) {
+        console.error('Error loading targets:', error);
+      }
+    };
+    
+    fetchTargets();
+  }, [styles.length, lots.length]);
 
   useEffect(() => {
     fetchData();
@@ -66,7 +97,7 @@ const OPDashboard = () => {
           </div>
           <div>
             <div className="text-label">Style Aktif</div>
-            <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>IVYS / HCPS</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{activeStyle}</div>
           </div>
           <div>
             <div className="text-label">Status Mesin</div>
@@ -79,15 +110,27 @@ const OPDashboard = () => {
       </div>
 
       <div className="stats-grid">
-        <StatsCard label="Target / Jam" value={`${formatNumber(targetPerHour)} Pcs`} icon="" />
+        <StatsCard 
+          label="Target / Jam" 
+          value={`${formatNumber(targetPerHour)} Pcs`} 
+          icon="" 
+        />
         <StatsCard 
           label="Output Hari Ini" 
           value={`${formatNumber(totalOutput)} Pcs`} 
           subtext={`${userOutputs.length} jam terekam`} 
           icon="" 
         />
-        <StatsCard label="Target Harian" value={`${formatNumber(targetDaily)} Pcs`} icon="" />
-        <StatsCard label="Pencapaian" value={`${achievement.toFixed(1)}%`} icon="" />
+        <StatsCard 
+          label="Target Harian" 
+          value={`${formatNumber(targetDaily)} Pcs`} 
+          icon="" 
+        />
+        <StatsCard 
+          label="Pencapaian" 
+          value={`${achievement.toFixed(1)}%`} 
+          icon="" 
+        />
       </div>
 
       <div style={{ marginBottom: '16px' }}>
@@ -137,7 +180,6 @@ const OPDashboard = () => {
             <div className="sum-row"><span>Total Output</span><span className="sum-val">{formatNumber(totalOutput)} Pcs</span></div>
             <div className="sum-row"><span>Waktu Efektif</span><span className="sum-val">{userOutputs.length * 60} Min</span></div>
             <div className="sum-row"><span>Kendala Tercatat</span><span className="sum-val">0</span></div>
-            {/* ❌ ESTIMATED INCENTIVE DIHAPUS */}
           </div>
           <Button variant="ghost" className="w-full" onClick={() => navigate('/operator/kendala')}>
             ⚠ Laporkan Kendala
