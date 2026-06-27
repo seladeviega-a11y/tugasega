@@ -4,12 +4,10 @@ import { getInitials } from '../../utils/helpers';
 
 const Topbar = ({ role, onToggleSidebar }) => {
   const { user } = useAuth();
-
   const roleLabel = role === 'operator' ? 'Operator' : 'Leader / Admin';
 
   return (
     <>
-      {/* Desktop Topbar */}
       <div className="topbar desk-only">
         <div className="tb-search">
           <span>🔍</span>
@@ -30,12 +28,25 @@ const Topbar = ({ role, onToggleSidebar }) => {
         </div>
       </div>
 
-      {/* Mobile Topbar */}
       <div className="mob-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span 
-            style={{ fontSize: '22px', cursor: 'pointer', touchAction: 'manipulation' }} 
-            onClick={onToggleSidebar}
+            style={{ 
+              fontSize: '24px', 
+              cursor: 'pointer', 
+              touchAction: 'manipulation',
+              padding: '8px 12px',
+              userSelect: 'none',
+              WebkitTapHighlightColor: 'transparent'
+            }} 
+            onClick={() => {
+              console.log('🍔 Hamburger DI KLIK!');
+              onToggleSidebar();
+            }}
+            onTouchStart={() => {
+              console.log('🍔 Hamburger DI TOUCH!');
+              onToggleSidebar();
+            }}
           >
             ☰
           </span>
