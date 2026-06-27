@@ -14,12 +14,10 @@ const OPHISTORY = () => {
   const [userOutputs, setUserOutputs] = useState([]);
   const [totalOutput, setTotalOutput] = useState(0);
 
-  // 🔥 LOAD DATA SETIAP KOMPONEN DI-MOUNT
   useEffect(() => {
     fetchData();
   }, []);
 
-  // 🔥 UPDATE DATA KETIKA hourlyOutputs BERUBAH
   useEffect(() => {
     if (hourlyOutputs.length > 0 || !loading) {
       const outputs = hourlyOutputs.filter(o => o.operator_id === user?.id);
@@ -64,88 +62,66 @@ const OPHISTORY = () => {
             ) : userOutputs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '20px', color: 'var(--sub)' }}>
                 Belum ada data input hari ini.
-                <div style={{ marginTop: '10px' }}>
-                  <button 
-                    className="btn btn-primary btn-sm"
-                    onClick={() => window.location.reload()}
-                  >
-                    🔄 Refresh
-                  </button>
-                </div>
               </div>
             ) : (
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Jam</th>
-                    <th>Style</th>
-                    <th>Output (Qty)</th>
-                    <th>Target</th>
-                    <th>Selisih</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userOutputs.map((entry, idx) => {
-                    const target = 135;
-                    const qty = entry.qty || 0;
-                    const selisih = qty - target;
-                    let status;
-                    
-                    if (qty === 0) {
-                      status = <Badge type="sched">Start Up</Badge>;
-                    } else if (qty >= target) {
-                      status = <Badge type="prog">Tercapai</Badge>;
-                    } else {
-                      status = <Badge type="pend">Di Bawah Target</Badge>;
-                    }
-                    
-                    return (
-                      <tr key={entry.id || idx}>
-                        <td>{entry.jam || '--:--'}</td>
-                        <td>{entry.style || '-'}</td>
-                        <td style={{ fontWeight: 700 }}>{qty}</td>
-                        <td>{target}</td>
-                        <td style={{ 
-                          color: selisih >= 0 ? 'var(--accent)' : 'var(--danger)', 
-                          fontWeight: 600 
-                        }}>
-                          {selisih >= 0 ? '+' : ''}{selisih}
-                        </td>
-                        <td>{status}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              // 🔥 MOBILE RESPONSIVE - TABLE WRAPPER
+              <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <table className="data-table" style={{ minWidth: '500px' }}>
+                  <thead>
+                    <tr>
+                      <th>Jam</th>
+                      <th>Style</th>
+                      <th>Output</th>
+                      <th>Target</th>
+                      <th>Selisih</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {userOutputs.map((entry, idx) => {
+                      const target = 135;
+                      const qty = entry.qty || 0;
+                      const selisih = qty - target;
+                      let status;
+                      
+                      if (qty === 0) {
+                        status = <Badge type="sched">Start Up</Badge>;
+                      } else if (qty >= target) {
+                        status = <Badge type="prog">Tercapai</Badge>;
+                      } else {
+                        status = <Badge type="pend">Di Bawah</Badge>;
+                      }
+                      
+                      return (
+                        <tr key={entry.id || idx}>
+                          <td>{entry.jam || '--:--'}</td>
+                          <td>{entry.style || '-'}</td>
+                          <td style={{ fontWeight: 700 }}>{qty}</td>
+                          <td>{target}</td>
+                          <td style={{ 
+                            color: selisih >= 0 ? 'var(--accent)' : 'var(--danger)', 
+                            fontWeight: 600 
+                          }}>
+                            {selisih >= 0 ? '+' : ''}{selisih}
+                          </td>
+                          <td>{status}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </Card>
         </div>
 
         <div>
           <Card title="Rekap Harian">
-            <div className="sum-row">
-              <span>Total Output</span>
-              <span className="sum-val">{formatNumber(totalOutput)} Pcs</span>
-            </div>
-            <div className="sum-row">
-              <span>Jumlah Input</span>
-              <span className="sum-val">{userOutputs.length} kali</span>
-            </div>
-            <div className="sum-row">
-              <span>Target Harian</span>
-              <span className="sum-val">{formatNumber(targetDaily)} Pcs</span>
-            </div>
-            <div className="sum-row">
-              <span>Pencapaian</span>
-              <span className="sum-val" style={{ color: 'var(--warn)' }}>
-                {achievement.toFixed(1)}%
-              </span>
-            </div>
-            <div className="sum-row">
-              <span>Kendala Tercatat</span>
-              <span className="sum-val">0</span>
-            </div>
+            <div className="sum-row"><span>Total Output</span><span className="sum-val">{formatNumber(totalOutput)} Pcs</span></div>
+            <div className="sum-row"><span>Jumlah Input</span><span className="sum-val">{userOutputs.length} kali</span></div>
+            <div className="sum-row"><span>Target Harian</span><span className="sum-val">{formatNumber(targetDaily)} Pcs</span></div>
+            <div className="sum-row"><span>Pencapaian</span><span className="sum-val" style={{ color: 'var(--warn)' }}>{achievement.toFixed(1)}%</span></div>
+            <div className="sum-row"><span>Kendala Tercatat</span><span className="sum-val">0</span></div>
             <div style={{ marginTop: '12px' }}>
               <ProgressBar 
                 value={achievement} 
@@ -161,7 +137,6 @@ const OPHISTORY = () => {
             </div>
           </Card>
 
-          {/* 🔥 TOMBOL REFRESH MANUAL */}
           <button 
             className="btn btn-outline w-full mt-12"
             onClick={fetchData}

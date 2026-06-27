@@ -8,16 +8,14 @@ const Topbar = ({ role, onToggleSidebar }) => {
 
   return (
     <>
+      {/* Desktop Topbar */}
       <div className="topbar desk-only">
         <div className="tb-search">
           <span>🔍</span>
           <input type="text" placeholder="Cari style, batch, operator..." />
         </div>
         <div className="topbar-right">
-          <div className="tb-bell">
-            🔔
-            <div className="tb-badge"></div>
-          </div>
+          {/* ❌ NOTIFIKASI DIHAPUS */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div className="avatar">{getInitials(user?.name || 'User')}</div>
             <div>
@@ -28,6 +26,7 @@ const Topbar = ({ role, onToggleSidebar }) => {
         </div>
       </div>
 
+      {/* Mobile Topbar */}
       <div className="mob-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span 
@@ -35,16 +34,12 @@ const Topbar = ({ role, onToggleSidebar }) => {
               fontSize: '24px', 
               cursor: 'pointer', 
               touchAction: 'manipulation',
-              padding: '8px 12px',
+              padding: '4px 8px',
               userSelect: 'none',
               WebkitTapHighlightColor: 'transparent'
             }} 
             onClick={() => {
               console.log('🍔 Hamburger DI KLIK!');
-              onToggleSidebar();
-            }}
-            onTouchStart={() => {
-              console.log('🍔 Hamburger DI TOUCH!');
               onToggleSidebar();
             }}
           >
@@ -53,10 +48,7 @@ const Topbar = ({ role, onToggleSidebar }) => {
           <span style={{ fontSize: '16px', fontWeight: 700 }}>StitchControl AI</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div className="tb-bell">
-            🔔
-            <div className="tb-badge"></div>
-          </div>
+          {/* ❌ NOTIFIKASI DIHAPUS */}
           <div className="avatar">{getInitials(user?.name || 'User')}</div>
         </div>
       </div>

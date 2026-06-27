@@ -19,13 +19,11 @@ const OPDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userOutputs, setUserOutputs] = useState([]);
 
-  // Refresh data setiap kali komponen di-mount atau hourlyOutputs berubah
   useEffect(() => {
     fetchData();
   }, []);
 
   useEffect(() => {
-    // Update data ketika hourlyOutputs berubah
     const outputs = hourlyOutputs.filter(o => o.operator_id === user?.id);
     setUserOutputs(outputs);
     const total = outputs.reduce((sum, o) => sum + (o.qty || 0), 0);
@@ -139,7 +137,7 @@ const OPDashboard = () => {
             <div className="sum-row"><span>Total Output</span><span className="sum-val">{formatNumber(totalOutput)} Pcs</span></div>
             <div className="sum-row"><span>Waktu Efektif</span><span className="sum-val">{userOutputs.length * 60} Min</span></div>
             <div className="sum-row"><span>Kendala Tercatat</span><span className="sum-val">0</span></div>
-            <div className="sum-row"><span>Estimated Incentive</span><span className="sum-incentive">Rp {formatNumber(totalOutput * 200)}</span></div>
+            {/* ❌ ESTIMATED INCENTIVE DIHAPUS */}
           </div>
           <Button variant="ghost" className="w-full" onClick={() => navigate('/operator/kendala')}>
             ⚠ Laporkan Kendala
