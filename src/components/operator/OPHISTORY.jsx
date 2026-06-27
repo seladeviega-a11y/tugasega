@@ -13,6 +13,8 @@ const OPHISTORY = () => {
   const [loading, setLoading] = useState(true);
   const [userOutputs, setUserOutputs] = useState([]);
   const [totalOutput, setTotalOutput] = useState(0);
+  const [totalHours, setTotalHours] = useState(0);
+  const [overtimeHours, setOvertimeHours] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -24,6 +26,15 @@ const OPHISTORY = () => {
       setUserOutputs(outputs);
       const total = outputs.reduce((sum, o) => sum + (o.qty || 0), 0);
       setTotalOutput(total);
+      
+      // 🔥 HITUNG JAM KERJA & LEMBUR
+      const uniqueHours = new Set(outputs.map(o => o.jam?.split(':')[0]));
+      const hoursWorked = uniqueHours.size;
+      setTotalHours(hoursWorked);
+      
+      // Lembur jika lebih dari 8 jam
+      const overtime = Math.max(0, hoursWorked - 8);
+      setOvertimeHours(overtime);
     }
   }, [hourlyOutputs, user?.id, loading]);
 
@@ -41,6 +52,7 @@ const OPHISTORY = () => {
 
   const targetDaily = 1080;
   const achievement = targetDaily > 0 ? (totalOutput / targetDaily * 100) : 0;
+  const isOvertime = overtimeHours > 0;
 
   return (
     <div>
@@ -64,7 +76,6 @@ const OPHISTORY = () => {
                 Belum ada data input hari ini.
               </div>
             ) : (
-              // 🔥 MOBILE RESPONSIVE - TABLE WRAPPER
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <table className="data-table" style={{ minWidth: '500px' }}>
                   <thead>
@@ -117,11 +128,50 @@ const OPHISTORY = () => {
 
         <div>
           <Card title="Rekap Harian">
-            <div className="sum-row"><span>Total Output</span><span className="sum-val">{formatNumber(totalOutput)} Pcs</span></div>
-            <div className="sum-row"><span>Jumlah Input</span><span className="sum-val">{userOutputs.length} kali</span></div>
-            <div className="sum-row"><span>Target Harian</span><span className="sum-val">{formatNumber(targetDaily)} Pcs</span></div>
-            <div className="sum-row"><span>Pencapaian</span><span className="sum-val" style={{ color: 'var(--warn)' }}>{achievement.toFixed(1)}%</span></div>
-            <div className="sum-row"><span>Kendala Tercatat</span><span className="sum-val">0</span></div>
+            <div className="sum-row">
+              <span>Total Output</span>
+              <span className="sum-val">{formatNumber(totalOutput)} Pcs</span>
+            </div>
+            <div className="sum-row">
+              <span>Jumlah Input</span>
+              <span className="sum-val">{userOutputs.length} kali</span>
+            </div>
+            <div className="sum-row">
+              <span>Target Harian</span>
+              <span className="sum-val">{formatNumber(targetDaily)} Pcs</span>
+            </div>
+            <div className="sum-row">
+              <span>Pencapaian</span>
+              <span className="sum-val" style={{ color: 'var(--warn)' }}>
+                {achievement.toFixed(1)}%
+              </span>
+            </div>
+            <div className="sum-row">
+              <span>Kendala Tercatat</span>
+              <span className="sum-val">0</span>
+            </div>
+            
+            {/* 🆕 JAM KERJA */}
+            <div className="sum-row" style={{ borderTop: '2px solid var(--accent)', marginTop: '4px', paddingTop: '12px' }}>
+              <span style={{ fontWeight: 600 }}>⏱ Jam Kerja</span>
+              <span className="sum-val" style={{ fontSize: '16px' }}>
+                {totalHours} Jam
+              </span>
+            </div>
+            
+            {/* 🆕 LEMBUR */}
+            <div className="sum-row">
+              <span style={{ fontWeight: 600, color: isOvertime ? 'var(--danger)' : 'var(--sub)' }}>
+                {isOvertime ? '🔴 Lembur' : 'Lembur'}
+              </span>
+              <span className="sum-val" style={{ 
+                fontSize: '16px', 
+                color: isOvertime ? 'var(--danger)' : 'var(--sub)' 
+              }}>
+                {isOvertime ? `${overtimeHours} Jam` : '0 Jam'}
+              </span>
+            </div>
+
             <div style={{ marginTop: '12px' }}>
               <ProgressBar 
                 value={achievement} 

@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 
 const OPInput = () => {
   const { user } = useAuth();
-  const { hourlyOutputs, loadHourlyOutputs, createHourlyOutput, lots } = useProductions();
+  const { hourlyOutputs, loadHourlyOutputs, createHourlyOutput } = useProductions();
   const [qty, setQty] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('');
   const [selectedLot, setSelectedLot] = useState('');
@@ -53,7 +53,7 @@ const OPInput = () => {
 
     setLoading(true);
     try {
-      const result = await createHourlyOutput({
+      await createHourlyOutput({
         operator_id: user?.id,
         lot_id: null,
         jam: currentHour,
@@ -63,7 +63,6 @@ const OPInput = () => {
         remark: '-'
       });
       
-      console.log('✅ Data tersimpan:', result);
       await fetchData();
       setQty('');
       setSelectedStyle('');
@@ -140,7 +139,6 @@ const OPInput = () => {
             </div>
 
             <form onSubmit={handleSubmit}>
-              {/* 🔥 STYLE MANUAL - TEXT INPUT */}
               <div className="form-group">
                 <label className="field-label">Style</label>
                 <input
@@ -153,7 +151,6 @@ const OPInput = () => {
                 />
               </div>
 
-              {/* 🔥 LOT MANUAL - TEXT INPUT */}
               <div className="form-group">
                 <label className="field-label">Lot / Batch</label>
                 <input
@@ -201,12 +198,7 @@ const OPInput = () => {
               <span style={{ fontSize: '13px' }}>Jumlah Input</span>
               <span className="sum-val">{todayOutputs.length} <span style={{ fontSize: '11px', color: 'var(--sub)' }}>kali</span></span>
             </div>
-            <div className="sum-row">
-              <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px' }}>
-                <span style={{ color: 'var(--accent)' }}>⟳</span> Est. Incentive
-              </span>
-              <span className="sum-incentive">Rp {formatNumber(totalOutput * 200)}</span>
-            </div>
+            {/* ❌ EST. INCENTIVE DIHAPUS */}
           </div>
 
           <div className="notice">
