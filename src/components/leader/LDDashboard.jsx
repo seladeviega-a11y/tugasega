@@ -9,19 +9,20 @@ import Badge from '../common/Badge';
 import Button from '../common/Button';
 import { getIndonesianDate, getToday } from '../../utils/dateUtils';
 import { formatNumber } from '../../utils/helpers';
-import { getConstraintIcon, getConstraintColor } from '../../utils/constants';
+import { supabase } from '../../api/supabase';
 import toast from 'react-hot-toast';
 
 const LDDashboard = () => {
   const { user } = useAuth();
-  const { hourlyOutputs, lots, loadHourlyOutputs, loadLots } = useProductions();
+  const { hourlyOutputs, lots, loadHourlyOutputs, loadLots, styles, loadStyles, assignments, loadAssignments } = useProductions();
   const { constraints, loadConstraints } = useConstraints();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [totalOutput, setTotalOutput] = useState(0);
   const [totalTarget, setTotalTarget] = useState(0);
   const [styleOutputs, setStyleOutputs] = useState({});
-  const [activeOperators, setActiveOperators] = useState([]);
+  const [operators, setOperators] = useState([]);
+  const [operatorStatus, setOperatorStatus] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -34,38 +35,24 @@ const LDDashboard = () => {
       await loadHourlyOutputs(today);
       await loadConstraints(today);
       await loadLots();
-
-      const total = hourlyOutputs.reduce((sum, o) => sum + (o.qty || 0), 0);
-      setTotalOutput(total);
-
-      const target = lots.reduce((sum, l) => sum + (l.target_total || 0), 0);
-      setTotalTarget(target);
-
+      await loadStyles();
+      await loadAssignments();
+      await fetchOperators();
+      
+      // 🔥 STYLE OUTPUTS DARI DATA REAL
       const styleMap = {};
       hourlyOutputs.forEach(item => {
         const style = item.style || 'Unknown';
         styleMap[style] = (styleMap[style] || 0) + (item.qty || 0);
       });
       setStyleOutputs(styleMap);
-
-      const operators = {};
-      hourlyOutputs.forEach(item => {
-        const opId = item.operator_id;
-        if (!operators[opId]) {
-          operators[opId] = {
-            id: opId,
-            name: item.profiles?.name || 'Unknown',
-            style: item.style || '-',
-            total: 0,
-            jam: item.jam || '--:--',
-            lastInput: item.created_at
-          };
-        }
-        operators[opId].total += (item.qty || 0);
-        if (item.jam) operators[opId].jam = item.jam;
-      });
-      setActiveOperators(Object.values(operators));
-
+      
+      const total = hourlyOutputs.reduce((sum, o) => sum + (o.qty || 0), 0);
+      setTotalOutput(total);
+      
+      const target = lots.reduce((sum, l) => sum + (l.target_total || 0), 0);
+      setTotalTarget(target);
+      
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Gagal memuat data dashboard');
@@ -74,19 +61,43 @@ const LDDashboard = () => {
     }
   };
 
+  // 🔥 AMBIL OPERATOR & STATUS SHIFT
+  const fetchOperators = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, employee_id, shift_status, current_lot_id')
+        .eq('role', 'operator');
+      
+      if (error) throw error;
+      setOperators(data || []);
+      
+      // Mapping status
+      const statusMap = {};
+      data.forEach(op => {
+        statusMap[op.id] = op.shift_status || 'offline';
+      });
+      setOperatorStatus(statusMap);
+    } catch (error) {
+      console.error('Error fetching operators:', error);
+    }
+  };
+
   const achievement = totalTarget > 0 ? (totalOutput / totalTarget * 100) : 0;
 
-  // 🔥 HITUNG PREDIKSI
-  const now = new Date();
-  const startHour = 7;
-  const endHour = 16;
-  const currentHour = now.getHours();
-  const hoursElapsed = Math.max(0, currentHour - startHour);
-  const totalHours = endHour - startHour;
-  const hoursRemaining = Math.max(0, totalHours - hoursElapsed);
-  const avgPerHour = hoursElapsed > 0 ? totalOutput / hoursElapsed : 0;
-  const predictedFinal = totalOutput + (avgPerHour * hoursRemaining);
-  const predictedPercentage = totalTarget > 0 ? Math.min((predictedFinal / totalTarget) * 100, 100) : 0;
+  // Status badge
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'online': return <Badge type="run" dot>Online</Badge>;
+      case 'break': return <Badge type="idle" dot>Istirahat</Badge>;
+      default: return <Badge type="sched">Offline</Badge>;
+    }
+  };
+
+  // 🔥 OPERATOR AKTIF (online + break)
+  const activeOperators = operators.filter(op => op.shift_status === 'online' || op.shift_status === 'break');
+  const onlineCount = operators.filter(op => op.shift_status === 'online').length;
+  const breakCount = operators.filter(op => op.shift_status === 'break').length;
 
   return (
     <div>
@@ -105,32 +116,17 @@ const LDDashboard = () => {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="stats-grid">
-        <StatsCard
-          label="Total Target"
-          value={`${formatNumber(totalTarget)} Pcs`}
-          subtext="Target produksi hari ini"
-          icon=""
-        />
-        <StatsCard
-          label="Total Output"
-          value={`${formatNumber(totalOutput)} Pcs`}
-          subtext={`Dari ${hourlyOutputs.length} input`}
-          icon=""
-        />
-        <StatsCard
-          label="% Pencapaian"
-          value={`${achievement.toFixed(1)}%`}
-          icon=""
-        />
-        <StatsCard
-          label="Status Produksi"
+        <StatsCard label="Total Target" value={`${formatNumber(totalTarget)} Pcs`} subtext="Target produksi hari ini" icon="🎯" />
+        <StatsCard label="Total Output" value={`${formatNumber(totalOutput)} Pcs`} subtext={`Dari ${hourlyOutputs.length} input`} icon="📦" />
+        <StatsCard label="% Pencapaian" value={`${achievement.toFixed(1)}%`} icon="⚡" />
+        <StatsCard 
+          label="Status Produksi" 
           value={<Badge type={achievement >= 75 ? 'run' : 'idle'} dot>
             {achievement >= 75 ? 'ON TRACK' : 'PERLU PERHATIAN'}
-          </Badge>}
-          subtext={`${activeOperators.length} operator aktif`}
-          icon="🔄"
+          </Badge>} 
+          subtext={`${onlineCount} online, ${breakCount} istirahat`} 
+          icon="🔄" 
         />
       </div>
 
@@ -138,38 +134,41 @@ const LDDashboard = () => {
         <ProgressBar value={achievement} label="Progress Produksi Hari Ini" color={achievement >= 100 ? 'prog-g' : achievement >= 75 ? 'prog-o' : 'prog-r'} />
       </div>
 
-      {/* Operator Aktif */}
+      {/* 🔥 OPERATOR AKTIF */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="st">
-          👷 Operator Aktif Saat Ini
+          👷 Status Operator
           <span style={{ fontSize: '12px', color: 'var(--sub)' }}>
-            {activeOperators.length} operator
+            {activeOperators.length} aktif / {operators.length} total
           </span>
         </div>
-        {activeOperators.length === 0 ? (
+        {operators.length === 0 ? (
           <div style={{ color: 'var(--sub)', textAlign: 'center', padding: '20px' }}>
-            Belum ada operator yang input data hari ini.
+            Belum ada operator terdaftar.
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px' }}>
-            {activeOperators.map((op, idx) => {
+            {operators.map((op) => {
               const colors = ['#2b6cb0', '#00a87a', '#f6a623', '#805ad5', '#e53e3e'];
-              const initials = op.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              const idx = operators.indexOf(op);
+              const initials = op.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'OP';
+              const status = op.shift_status || 'offline';
+              
               return (
-                <div key={op.id || idx} style={{ 
+                <div key={op.id} style={{ 
                   background: 'var(--bg)', 
                   borderRadius: '8px', 
                   padding: '12px 16px',
-                  borderLeft: `3px solid ${colors[idx % colors.length]}`
+                  borderLeft: `3px solid ${status === 'online' ? 'var(--accent)' : status === 'break' ? 'var(--warn)' : 'var(--border)'}`
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className="op-av" style={{ background: colors[idx % colors.length] }}>
                       {initials}
                     </div>
                     <div>
-                      <div style={{ fontWeight: 600 }}>{op.name}</div>
+                      <div style={{ fontWeight: 600 }}>{op.name || 'Unknown'}</div>
                       <div style={{ fontSize: '11px', color: 'var(--sub)' }}>
-                        Style: {op.style} | Total: {op.total} Pcs
+                        {getStatusBadge(status)}
                       </div>
                     </div>
                   </div>
@@ -182,7 +181,6 @@ const LDDashboard = () => {
 
       <div className="two-col-lg">
         <div>
-          {/* Output per operator */}
           <div className="card" style={{ marginBottom: '16px' }}>
             <div className="st">
               Output Operator
@@ -190,9 +188,9 @@ const LDDashboard = () => {
                 Lihat Semua →
               </span>
             </div>
-            {activeOperators.length === 0 ? (
+            {operators.filter(op => op.shift_status === 'online' || op.shift_status === 'break').length === 0 ? (
               <div style={{ color: 'var(--sub)', textAlign: 'center', padding: '20px' }}>
-                Belum ada data operator hari ini.
+                Belum ada operator aktif.
               </div>
             ) : (
               <table className="data-table">
@@ -200,34 +198,33 @@ const LDDashboard = () => {
                   <tr>
                     <th>Operator</th>
                     <th>Style</th>
-                    <th>Output</th>
-                    <th>Jam Terakhir</th>
                     <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activeOperators.slice(0, 5).map((op, idx) => {
+                  {operators.filter(op => op.shift_status === 'online' || op.shift_status === 'break').slice(0, 5).map((op) => {
                     const colors = ['#2b6cb0', '#00a87a', '#f6a623', '#805ad5'];
-                    const initials = op.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                    const isActive = new Date(op.lastInput) > new Date(Date.now() - 3600000);
+                    const idx = operators.filter(o => o.shift_status === 'online' || o.shift_status === 'break').indexOf(op);
+                    const initials = op.name?.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'OP';
+                    
+                    // Cari style dari assignment
+                    const assignment = assignments.find(a => a.operator_id === op.id && a.active);
+                    const lot = assignment ? lots.find(l => l.id === assignment.lot_id) : null;
+                    const style = lot ? styles.find(s => s.id === lot.style_id) : null;
+                    
                     return (
-                      <tr key={op.id || idx}>
+                      <tr key={op.id}>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <div className="op-av" style={{ background: colors[idx % colors.length] }}>{initials}</div>
                             <div>
-                              <div style={{ fontWeight: 600 }}>{op.name}</div>
+                              <div style={{ fontWeight: 600 }}>{op.name || 'Unknown'}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--sub)' }}>{op.employee_id}</div>
                             </div>
                           </div>
                         </td>
-                        <td>{op.style}</td>
-                        <td style={{ fontWeight: 700 }}>{op.total}</td>
-                        <td>{op.jam}</td>
-                        <td>
-                          <Badge type={isActive ? 'run' : 'idle'} dot>
-                            {isActive ? 'Aktif' : 'Idle'}
-                          </Badge>
-                        </td>
+                        <td>{style?.name || '-'}</td>
+                        <td>{getStatusBadge(op.shift_status)}</td>
                       </tr>
                     );
                   })}
@@ -238,7 +235,6 @@ const LDDashboard = () => {
         </div>
 
         <div>
-          {/* Output per style */}
           <div className="card" style={{ marginBottom: '12px' }}>
             <div className="st">Output per Style</div>
             {Object.entries(styleOutputs).length === 0 ? (
@@ -271,40 +267,6 @@ const LDDashboard = () => {
                 );
               })
             )}
-          </div>
-
-          {/* 🔥 AI INSIGHT - FIXED */}
-          <div className="ai-box" style={{ marginTop: '12px' }}>
-            <div className="ai-badge-txt">✦ AI INSIGHTS</div>
-            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>
-              Prediksi Akhir Shift
-            </div>
-            
-            <div className="ai-big">
-              {totalTarget > 0 ? Math.min(Math.round(predictedPercentage), 100) : 0}%
-            </div>
-            <div className="ai-sub-txt">dari target harian</div>
-            
-            <div className="ai-stat-grid">
-              <div className="ai-sb">
-                <div className="ai-sb-l">Estimasi Final</div>
-                <div className="ai-sb-v">
-                  {Math.round(predictedFinal).toLocaleString()} Pcs
-                </div>
-              </div>
-              <div className="ai-sb">
-                <div className="ai-sb-l">Sisa Waktu</div>
-                <div className="ai-sb-v" style={{ color: 'var(--accent)' }}>
-                  {hoursRemaining > 0 ? `${hoursRemaining} jam` : 'Shift selesai'}
-                </div>
-              </div>
-              <div className="ai-sb" style={{ gridColumn: 'span 2' }}>
-                <div className="ai-sb-l">Rata-rata per Jam</div>
-                <div className="ai-sb-v">
-                  {Math.round(avgPerHour).toLocaleString()} Pcs/jam
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

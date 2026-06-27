@@ -5,8 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import StatsCard from '../common/StatsCard';
 import ProgressBar from '../common/ProgressBar';
 import Button from '../common/Button';
-import { getIndonesianDate, getToday } from '../../utils/dateUtils';
+import Badge from '../common/Badge';
+import { getIndonesianDate, getToday, getCurrentHour } from '../../utils/dateUtils';
 import { formatNumber } from '../../utils/helpers';
+import { supabase } from '../../api/supabase';
+import toast from 'react-hot-toast';
 
 const OPDashboard = () => {
   const { user } = useAuth();
@@ -19,8 +22,13 @@ const OPDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [userOutputs, setUserOutputs] = useState([]);
   const [activeStyle, setActiveStyle] = useState('-');
+  const [activeLot, setActiveLot] = useState(null);
+  const [shiftStatus, setShiftStatus] = useState('offline');
+  const [shiftStart, setShiftStart] = useState(null);
+  const [isOnBreak, setIsOnBreak] = useState(false);
+  const [breakStart, setBreakStart] = useState(null);
 
-  // 🔥 Ambil style aktif dari assignment operator
+  // 🔥 Ambil data operator & shift status
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -28,31 +36,37 @@ const OPDashboard = () => {
         await loadLots();
         await loadAssignments();
         
-        // Cari assignment aktif untuk operator ini
-        const userAssignment = assignments.find(a => a.operator_id === user?.id && a.active);
-        if (userAssignment) {
-          const lot = lots.find(l => l.id === userAssignment.lot_id);
-          if (lot) {
-            const style = styles.find(s => s.id === lot.style_id);
-            if (style) {
-              setActiveStyle(style.name);
-              setTargetPerHour(style.target_per_hour || 135);
+        // Ambil status shift operator dari database
+        if (user?.id) {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('shift_status, current_lot_id, shift_start, break_start')
+            .eq('id', user.id)
+            .single();
+          
+          if (!error && profile) {
+            setShiftStatus(profile.shift_status || 'offline');
+            setShiftStart(profile.shift_start);
+            setBreakStart(profile.break_start);
+            
+            // Cek apakah sedang istirahat
+            if (profile.shift_status === 'break') {
+              setIsOnBreak(true);
             }
-          }
-          // Target harian dari lot
-          if (lot) {
-            setTargetDaily(lot.target_total || 1080);
-          }
-        } else {
-          // Fallback: ambil data pertama
-          if (styles && styles.length > 0) {
-            const firstStyle = styles[0];
-            setActiveStyle(firstStyle.name || '-');
-            setTargetPerHour(firstStyle.target_per_hour || 135);
-          }
-          if (lots && lots.length > 0) {
-            const totalTarget = lots.reduce((sum, lot) => sum + (lot.target_total || 0), 0);
-            setTargetDaily(totalTarget || 1080);
+            
+            // Ambil lot aktif
+            if (profile.current_lot_id) {
+              const lot = lots.find(l => l.id === profile.current_lot_id);
+              if (lot) {
+                setActiveLot(lot);
+                const style = styles.find(s => s.id === lot.style_id);
+                if (style) {
+                  setActiveStyle(style.name);
+                  setTargetPerHour(style.target_per_hour || 135);
+                  setTargetDaily(lot.target_total || 1080);
+                }
+              }
+            }
           }
         }
       } catch (error) {
@@ -87,8 +101,111 @@ const OPDashboard = () => {
     }
   };
 
+  // 🔥 MULAI SHIFT
+  const handleStartShift = async () => {
+    try {
+      // Cek apakah ada assignment aktif
+      const userAssignment = assignments.find(a => a.operator_id === user?.id && a.active);
+      if (!userAssignment) {
+        toast.error('Belum ada penugasan dari leader!');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          shift_status: 'online',
+          current_lot_id: userAssignment.lot_id,
+          shift_start: getCurrentHour(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      setShiftStatus('online');
+      setShiftStart(getCurrentHour());
+      toast.success('✅ Shift dimulai! Selamat bekerja!');
+      
+      // Refresh data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error starting shift:', error);
+      toast.error('Gagal memulai shift');
+    }
+  };
+
+  // 🔥 ISTIRAHAT
+  const handleBreak = async () => {
+    try {
+      const newStatus = isOnBreak ? 'online' : 'break';
+      const updateData = {
+        shift_status: newStatus,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (!isOnBreak) {
+        updateData.break_start = getCurrentHour();
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      setIsOnBreak(!isOnBreak);
+      setShiftStatus(newStatus);
+      toast.success(isOnBreak ? '✅ Kembali bekerja!' : '☕ Istirahat dimulai');
+      
+      window.location.reload();
+    } catch (error) {
+      console.error('Error toggling break:', error);
+      toast.error('Gagal mengubah status');
+    }
+  };
+
+  // 🔥 SELESAI SHIFT
+  const handleEndShift = async () => {
+    if (!confirm('Yakin ingin mengakhiri shift?')) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          shift_status: 'offline',
+          current_lot_id: null,
+          shift_start: null,
+          break_start: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      
+      setShiftStatus('offline');
+      toast.success('✅ Shift selesai!');
+      
+      // Redirect ke login atau logout
+      navigate('/login');
+    } catch (error) {
+      console.error('Error ending shift:', error);
+      toast.error('Gagal mengakhiri shift');
+    }
+  };
+
   const achievement = targetDaily > 0 ? (totalOutput / targetDaily * 100) : 0;
   const historyPreview = userOutputs.slice(-3).reverse();
+
+  // Status badge
+  const getStatusBadge = () => {
+    switch (shiftStatus) {
+      case 'online': return <Badge type="run" dot>Online</Badge>;
+      case 'break': return <Badge type="idle" dot>Istirahat</Badge>;
+      default: return <Badge type="sched">Offline</Badge>;
+    }
+  };
 
   return (
     <div>
@@ -99,6 +216,45 @@ const OPDashboard = () => {
         </div>
         <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
           📅 {getIndonesianDate()}
+        </div>
+      </div>
+
+      {/* 🔥 STATUS & SHIFT CONTROL */}
+      <div className="card" style={{ marginBottom: '16px', borderLeft: `4px solid ${shiftStatus === 'online' ? 'var(--accent)' : shiftStatus === 'break' ? 'var(--warn)' : 'var(--border)'}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+          <div>
+            <div className="text-label">Status</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{getStatusBadge()}</div>
+          </div>
+          {shiftStart && (
+            <div>
+              <div className="text-label">Shift Mulai</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{shiftStart}</div>
+            </div>
+          )}
+          {shiftStatus === 'break' && breakStart && (
+            <div>
+              <div className="text-label">Istirahat Mulai</div>
+              <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{breakStart}</div>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            {shiftStatus === 'offline' && (
+              <Button variant="primary" onClick={handleStartShift}>▶️ Mulai Shift</Button>
+            )}
+            {shiftStatus === 'online' && (
+              <>
+                <Button variant="outline" onClick={handleBreak}>☕ Istirahat</Button>
+                <Button variant="danger" onClick={handleEndShift}>⏹ Akhiri Shift</Button>
+              </>
+            )}
+            {shiftStatus === 'break' && (
+              <>
+                <Button variant="accent" onClick={handleBreak}>▶️ Kembali</Button>
+                <Button variant="danger" onClick={handleEndShift}>⏹ Akhiri Shift</Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -113,37 +269,22 @@ const OPDashboard = () => {
             <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{activeStyle}</div>
           </div>
           <div>
-            <div className="text-label">Status Mesin</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-              <div style={{ width: '8px', height: '8px', background: 'var(--accent)', borderRadius: '50%' }}></div>
-              <span style={{ fontWeight: 700, color: 'var(--accent)' }}>RUNNING</span>
-            </div>
+            <div className="text-label">Lot / Batch</div>
+            <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '4px' }}>{activeLot?.lot_number || '-'}</div>
           </div>
         </div>
       </div>
 
       <div className="stats-grid">
-        <StatsCard 
-          label="Target / Jam" 
-          value={`${formatNumber(targetPerHour)} Pcs`} 
-          icon="🎯" 
-        />
+        <StatsCard label="Target / Jam" value={`${formatNumber(targetPerHour)} Pcs`} icon="🎯" />
         <StatsCard 
           label="Output Hari Ini" 
           value={`${formatNumber(totalOutput)} Pcs`} 
           subtext={`${userOutputs.length} jam terekam`} 
           icon="📦" 
         />
-        <StatsCard 
-          label="Target Harian" 
-          value={`${formatNumber(targetDaily)} Pcs`} 
-          icon="📋" 
-        />
-        <StatsCard 
-          label="Pencapaian" 
-          value={`${achievement.toFixed(1)}%`} 
-          icon="⚡" 
-        />
+        <StatsCard label="Target Harian" value={`${formatNumber(targetDaily)} Pcs`} icon="📋" />
+        <StatsCard label="Pencapaian" value={`${achievement.toFixed(1)}%`} icon="⚡" />
       </div>
 
       <div style={{ marginBottom: '16px' }}>

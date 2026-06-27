@@ -86,7 +86,6 @@ const LDManage = () => {
     setFormData({ ...formData, [id]: value });
   };
 
-  // 🔥 TAMBAH OPERATOR KE LIST (Klik operator)
   const handleAddOperator = (operatorId) => {
     if (!formData.operator_ids.includes(operatorId)) {
       setFormData({
@@ -96,7 +95,6 @@ const LDManage = () => {
     }
   };
 
-  // 🔥 HAPUS OPERATOR DARI LIST (Klik chip)
   const handleRemoveOperator = (operatorId) => {
     setFormData({
       ...formData,
@@ -104,7 +102,6 @@ const LDManage = () => {
     });
   };
 
-  // 🔥 EDIT - Tambah Operator ke List
   const handleEditAddOperator = (operatorId) => {
     if (!editData.operator_ids.includes(operatorId)) {
       setEditData({
@@ -114,7 +111,6 @@ const LDManage = () => {
     }
   };
 
-  // 🔥 EDIT - Hapus Operator dari List
   const handleEditRemoveOperator = (operatorId) => {
     setEditData({
       ...editData,
@@ -207,6 +203,46 @@ const LDManage = () => {
     }
   };
 
+  // 🔥 DELETE PRODUKSI
+  const handleDeleteProduction = async (lotId) => {
+    if (!confirm('⚠️ Yakin ingin menghapus produksi ini? Semua data terkait (output, kendala, assignment) akan ikut terhapus!')) return;
+
+    try {
+      // 1. Hapus hourly_outputs terkait
+      await supabase
+        .from('hourly_outputs')
+        .delete()
+        .eq('lot_id', lotId);
+
+      // 2. Hapus constraints terkait
+      await supabase
+        .from('constraints')
+        .delete()
+        .eq('lot_id', lotId);
+
+      // 3. Hapus assignments
+      await supabase
+        .from('assignments')
+        .delete()
+        .eq('lot_id', lotId);
+
+      // 4. Hapus lot
+      const { error } = await supabase
+        .from('lots')
+        .delete()
+        .eq('id', lotId);
+
+      if (error) throw error;
+
+      toast.success('🗑️ Produksi berhasil dihapus!');
+      await loadData();
+      await fetchOperators();
+    } catch (error) {
+      console.error('Error deleting production:', error);
+      toast.error('Gagal menghapus produksi');
+    }
+  };
+
   const handleEdit = (lot) => {
     setEditingLot(lot);
     const lotAssignments = assignments.filter(a => a.lot_id === lot.id && a.active);
@@ -294,7 +330,6 @@ const LDManage = () => {
     return map[status] || <Badge type="sched">{status || 'Tertunda'}</Badge>;
   };
 
-  // Dapatkan nama operator dari ID
   const getOperatorName = (id) => {
     const op = operators.find(o => o.id === id);
     return op ? `${op.name} (${op.employee_id})` : id;
@@ -371,7 +406,6 @@ const LDManage = () => {
             <div className="form-row">
               <div className="form-group">
                 <label className="field-label">Pilih Operator</label>
-                {/* 🔥 LIST OPERATOR - Klik untuk tambah */}
                 <div style={{ 
                   display: 'flex', 
                   flexWrap: 'wrap', 
@@ -428,7 +462,6 @@ const LDManage = () => {
               </div>
             </div>
 
-            {/* 🔥 LIST OPERATOR YANG DIPILIH (CHIP) */}
             {formData.operator_ids.length > 0 && (
               <div style={{ marginBottom: '14px' }}>
                 <label className="field-label">Operator Dipilih</label>
@@ -549,7 +582,6 @@ const LDManage = () => {
                 </select>
               </div>
 
-              {/* 🔥 EDIT - Pilih Operator */}
               <div className="form-group">
                 <label className="field-label">Pilih Operator</label>
                 <div style={{ 
@@ -587,7 +619,6 @@ const LDManage = () => {
                 </div>
               </div>
 
-              {/* 🔥 EDIT - LIST OPERATOR DIPILIH */}
               {editData.operator_ids.length > 0 && (
                 <div style={{ marginBottom: '14px' }}>
                   <label className="field-label">Operator Dipilih</label>
@@ -726,6 +757,14 @@ const LDManage = () => {
                             style={{ fontSize: '10px', padding: '4px 8px' }}
                           >
                             Edit
+                          </button>
+                          {/* 🔥 TOMBOL DELETE */}
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleDeleteProduction(lot.id)}
+                            style={{ fontSize: '10px', padding: '4px 8px' }}
+                          >
+                            🗑️
                           </button>
                         </div>
                       </td>

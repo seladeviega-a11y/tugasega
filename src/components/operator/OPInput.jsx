@@ -4,38 +4,67 @@ import { useProductions } from '../../hooks/useProductions';
 import Button from '../common/Button';
 import { getCurrentHour, getToday } from '../../utils/dateUtils';
 import { formatNumber } from '../../utils/helpers';
+import { supabase } from '../../api/supabase';
 import toast from 'react-hot-toast';
 
 const OPInput = () => {
   const { user } = useAuth();
-  const { hourlyOutputs, loadHourlyOutputs, createHourlyOutput, styles, loadStyles } = useProductions();
+  const { hourlyOutputs, loadHourlyOutputs, createHourlyOutput, styles, loadStyles, lots, loadLots, assignments, loadAssignments } = useProductions();
   const [qty, setQty] = useState('');
-  const [selectedStyle, setSelectedStyle] = useState('');
-  const [selectedLot, setSelectedLot] = useState('');
   const [loading, setLoading] = useState(false);
   const [todayOutputs, setTodayOutputs] = useState([]);
   const [totalOutput, setTotalOutput] = useState(0);
   const [targetPerHour, setTargetPerHour] = useState(135);
+  const [activeStyle, setActiveStyle] = useState('');
+  const [activeLot, setActiveLot] = useState('');
+  const [activeProcess, setActiveProcess] = useState('Finishing');
+  const [shiftStatus, setShiftStatus] = useState('offline');
   const currentHour = getCurrentHour();
 
-  // 🔥 Ambil target per jam dari leader (tabel styles)
+  // 🔥 Ambil data assignment & status shift operator
   useEffect(() => {
-    const fetchTarget = async () => {
+    const fetchData = async () => {
       try {
         await loadStyles();
-        if (styles && styles.length > 0) {
-          const firstStyle = styles[0];
-          setTargetPerHour(firstStyle.target_per_hour || 135);
+        await loadLots();
+        await loadAssignments();
+        
+        // Cek status shift operator
+        if (user?.id) {
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('shift_status, current_lot_id')
+            .eq('id', user.id)
+            .single();
+          
+          if (!error && profile) {
+            setShiftStatus(profile.shift_status || 'offline');
+            
+            // Ambil lot aktif dari assignment
+            if (profile.current_lot_id) {
+              const lot = lots.find(l => l.id === profile.current_lot_id);
+              if (lot) {
+                setActiveLot(lot.lot_number || '');
+                const style = styles.find(s => s.id === lot.style_id);
+                if (style) {
+                  setActiveStyle(style.name || '');
+                  setTargetPerHour(style.target_per_hour || 135);
+                  setActiveProcess(style.process_type || 'Finishing');
+                }
+              }
+            }
+          }
         }
       } catch (error) {
-        console.error('Error loading target:', error);
+        console.error('Error loading data:', error);
       }
     };
-    fetchTarget();
-  }, [styles.length]);
+    
+    fetchData();
+  }, [styles.length, lots.length, assignments.length, user?.id]);
 
   useEffect(() => {
-    fetchData();
+    fetchOutputs();
   }, []);
 
   useEffect(() => {
@@ -45,7 +74,7 @@ const OPInput = () => {
     setTotalOutput(total);
   }, [hourlyOutputs, user?.id]);
 
-  const fetchData = async () => {
+  const fetchOutputs = async () => {
     const today = getToday();
     await loadHourlyOutputs(today);
   };
@@ -53,18 +82,14 @@ const OPInput = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // 🔥 Cek status shift
+    if (shiftStatus !== 'online') {
+      toast.error('Anda belum memulai shift! Mulai shift dulu di dashboard.');
+      return;
+    }
+    
     if (!qty || parseInt(qty) <= 0) {
       toast.error('Masukkan jumlah output yang valid');
-      return;
-    }
-
-    if (!selectedStyle) {
-      toast.error('Masukkan style');
-      return;
-    }
-
-    if (!selectedLot) {
-      toast.error('Masukkan lot / batch');
       return;
     }
 
@@ -75,15 +100,13 @@ const OPInput = () => {
         lot_id: null,
         jam: currentHour,
         qty: parseInt(qty),
-        style: selectedStyle,
-        lot: selectedLot,
+        style: activeStyle,
+        lot: activeLot,
         remark: '-'
       });
       
-      await fetchData();
+      await fetchOutputs();
       setQty('');
-      setSelectedStyle('');
-      setSelectedLot('');
       toast.success(`✅ Input ${currentHour} berhasil disimpan!`);
       
     } catch (error) {
@@ -111,15 +134,20 @@ const OPInput = () => {
           </div>
           <div>
             <div className="text-label">Style</div>
-            <div style={{ fontWeight: 700, marginTop: '4px' }}>{selectedStyle || '-'}</div>
+            {/* 🔥 LOCKED - TIDAK BISA DIGANTI */}
+            <div style={{ fontWeight: 700, marginTop: '4px', color: 'var(--text)' }}>
+              {activeStyle || '-'}
+            </div>
           </div>
           <div>
             <div className="text-label">Lot / Batch</div>
-            <div style={{ fontWeight: 700, marginTop: '4px' }}>{selectedLot || '-'}</div>
+            {/* 🔥 LOCKED - TIDAK BISA DIGANTI */}
+            <div style={{ fontWeight: 700, marginTop: '4px', color: 'var(--text)' }}>
+              {activeLot || '-'}
+            </div>
           </div>
           <div>
             <div className="text-label">Target / Jam</div>
-            {/* 🔥 TARGET PER JAM IKUT DATA LEADER */}
             <div style={{ fontWeight: 700, marginTop: '4px', color: 'var(--accent)' }}>
               {formatNumber(targetPerHour)} Pcs
             </div>
@@ -159,30 +187,52 @@ const OPInput = () => {
             </div>
 
             <form onSubmit={handleSubmit}>
+              {/* 🔥 STYLE - LOCKED (Hanya Tampilan) */}
               <div className="form-group">
                 <label className="field-label">Style</label>
-                <input
-                  type="text"
-                  value={selectedStyle}
-                  onChange={(e) => setSelectedStyle(e.target.value)}
-                  placeholder="Contoh: IVYS / HCPS"
-                  className="form-control"
-                  required
-                />
+                <div style={{ 
+                  padding: '10px 12px', 
+                  background: 'var(--bg)', 
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontWeight: 600,
+                  color: 'var(--text)'
+                }}>
+                  {activeStyle || '-'}
+                </div>
               </div>
 
+              {/* 🔥 LOT - LOCKED (Hanya Tampilan) */}
               <div className="form-group">
                 <label className="field-label">Lot / Batch</label>
-                <input
-                  type="text"
-                  value={selectedLot}
-                  onChange={(e) => setSelectedLot(e.target.value)}
-                  placeholder="Contoh: 503 + 568"
-                  className="form-control"
-                  required
-                />
+                <div style={{ 
+                  padding: '10px 12px', 
+                  background: 'var(--bg)', 
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontWeight: 600,
+                  color: 'var(--text)'
+                }}>
+                  {activeLot || '-'}
+                </div>
               </div>
 
+              {/* 🔥 PROCESS - LOCKED (Hanya Tampilan) */}
+              <div className="form-group">
+                <label className="field-label">Proses</label>
+                <div style={{ 
+                  padding: '10px 12px', 
+                  background: 'var(--bg)', 
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  fontWeight: 600,
+                  color: 'var(--text)'
+                }}>
+                  {activeProcess}
+                </div>
+              </div>
+
+              {/* 🔥 QTY - SATU-SATUNYA YANG BISA DIISI */}
               <div className="form-group">
                 <label className="field-label">Jumlah Output (Qty)</label>
                 <input
@@ -195,8 +245,8 @@ const OPInput = () => {
                 />
               </div>
 
-              <Button type="submit" variant="primary" size="lg" disabled={loading}>
-                {loading ? 'Menyimpan...' : `💾 SIMPAN INPUT ${currentHour}`}
+              <Button type="submit" variant="primary" size="lg" disabled={loading || shiftStatus !== 'online'}>
+                {loading ? 'Menyimpan...' : shiftStatus !== 'online' ? 'Mulai Shift Dulu!' : `💾 SIMPAN INPUT ${currentHour}`}
               </Button>
             </form>
           </div>
@@ -226,7 +276,7 @@ const OPInput = () => {
               <div>
                 <div className="notice-title">INFO</div>
                 <div className="notice-text">
-                  Style dan Lot/Batch diisi manual sesuai produksi.
+                  Style, Lot, dan Proses diatur oleh Leader. Operator hanya mengisi jumlah output.
                 </div>
               </div>
             </div>
