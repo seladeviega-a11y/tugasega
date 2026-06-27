@@ -10,7 +10,7 @@ import { formatNumber } from '../../utils/helpers';
 
 const OPDashboard = () => {
   const { user } = useAuth();
-  const { hourlyOutputs, loadHourlyOutputs, lots, loadLots, styles, loadStyles } = useProductions();
+  const { hourlyOutputs, loadHourlyOutputs, lots, loadLots, styles, loadStyles, assignments, loadAssignments } = useProductions();
   const navigate = useNavigate();
   
   const [totalOutput, setTotalOutput] = useState(0);
@@ -18,40 +18,53 @@ const OPDashboard = () => {
   const [targetDaily, setTargetDaily] = useState(1080);
   const [loading, setLoading] = useState(true);
   const [userOutputs, setUserOutputs] = useState([]);
-  const [activeStyle, setActiveStyle] = useState('IVYS / HCPS');
+  const [activeStyle, setActiveStyle] = useState('-');
 
-  // 🔥 Ambil data dari Leader (styles & lots)
+  // 🔥 Ambil style aktif dari assignment operator
   useEffect(() => {
-    const fetchTargets = async () => {
+    const fetchData = async () => {
       try {
         await loadStyles();
         await loadLots();
+        await loadAssignments();
         
-        // Ambil target per jam dari styles (ambil yang pertama)
-        if (styles && styles.length > 0) {
-          const firstStyle = styles[0];
-          setTargetPerHour(firstStyle.target_per_hour || 135);
-          setActiveStyle(firstStyle.name || 'IVYS / HCPS');
-        }
-        
-        // Ambil target harian dari lots (total semua target)
-        if (lots && lots.length > 0) {
-          // Cari lot yang statusnya 'Berjalan' atau ambil semua
-          const activeLots = lots.filter(l => l.status === 'Berjalan');
-          const targetLots = activeLots.length > 0 ? activeLots : lots;
-          const totalTarget = targetLots.reduce((sum, lot) => sum + (lot.target_total || 0), 0);
-          setTargetDaily(totalTarget || 1080);
+        // Cari assignment aktif untuk operator ini
+        const userAssignment = assignments.find(a => a.operator_id === user?.id && a.active);
+        if (userAssignment) {
+          const lot = lots.find(l => l.id === userAssignment.lot_id);
+          if (lot) {
+            const style = styles.find(s => s.id === lot.style_id);
+            if (style) {
+              setActiveStyle(style.name);
+              setTargetPerHour(style.target_per_hour || 135);
+            }
+          }
+          // Target harian dari lot
+          if (lot) {
+            setTargetDaily(lot.target_total || 1080);
+          }
+        } else {
+          // Fallback: ambil data pertama
+          if (styles && styles.length > 0) {
+            const firstStyle = styles[0];
+            setActiveStyle(firstStyle.name || '-');
+            setTargetPerHour(firstStyle.target_per_hour || 135);
+          }
+          if (lots && lots.length > 0) {
+            const totalTarget = lots.reduce((sum, lot) => sum + (lot.target_total || 0), 0);
+            setTargetDaily(totalTarget || 1080);
+          }
         }
       } catch (error) {
-        console.error('Error loading targets:', error);
+        console.error('Error loading data:', error);
       }
     };
     
-    fetchTargets();
-  }, [styles.length, lots.length]);
+    fetchData();
+  }, [styles.length, lots.length, assignments.length, user?.id]);
 
   useEffect(() => {
-    fetchData();
+    fetchOutputs();
   }, []);
 
   useEffect(() => {
@@ -62,7 +75,7 @@ const OPDashboard = () => {
     setLoading(false);
   }, [hourlyOutputs, user?.id]);
 
-  const fetchData = async () => {
+  const fetchOutputs = async () => {
     setLoading(true);
     try {
       const today = getToday();
@@ -113,23 +126,23 @@ const OPDashboard = () => {
         <StatsCard 
           label="Target / Jam" 
           value={`${formatNumber(targetPerHour)} Pcs`} 
-          icon="" 
+          icon="🎯" 
         />
         <StatsCard 
           label="Output Hari Ini" 
           value={`${formatNumber(totalOutput)} Pcs`} 
           subtext={`${userOutputs.length} jam terekam`} 
-          icon="" 
+          icon="📦" 
         />
         <StatsCard 
           label="Target Harian" 
           value={`${formatNumber(targetDaily)} Pcs`} 
-          icon="" 
+          icon="📋" 
         />
         <StatsCard 
           label="Pencapaian" 
           value={`${achievement.toFixed(1)}%`} 
-          icon="" 
+          icon="⚡" 
         />
       </div>
 
