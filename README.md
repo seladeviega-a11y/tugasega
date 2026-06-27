@@ -1,16 +1,77 @@
-# React + Vite
+# StitchControl AI
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+**Sistem Monitoring Produksi Finishing Embroidery Berbasis Web**
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📌 Tentang Proyek
 
-## React Compiler
+StitchControl AI adalah aplikasi web untuk memonitor dan mengelola proses produksi finishing embroidery secara real-time. Aplikasi ini membantu operator mencatat hasil produksi harian dan memudahkan leader/admin dalam memantau kinerja produksi.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+## 🎯 Tujuan
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+1. Memudahkan operator mencatat hasil produksi per jam
+2. Menyediakan dashboard monitoring real-time untuk leader
+3. Melacak dan mengelola kendala produksi
+4. Menghasilkan laporan produksi harian
+
+---
+
+## 👥 Pengguna
+
+| Role | Tanggung Jawab |
+|------|----------------|
+| **Operator** | Mencatat output, lapor kendala, lihat riwayat |
+| **Leader/Admin** | Monitoring, kelola data, laporan |
+
+---
+
+## ⚡ Fitur
+
+### 🔐 Autentikasi
+- Login & Logout
+- Registrasi (khusus operator)
+- Role-based access control
+- Proteksi halaman berdasarkan role
+
+### 👷 Operator
+| Fitur | Deskripsi |
+|-------|-----------|
+| Dashboard | Ringkasan produksi harian |
+| Input Output | Rekam hasil produksi per jam |
+| Laporkan Kendala | Laporkan kendala produksi |
+| Riwayat Produksi | Lihat data output yang telah diinput |
+
+### 📊 Leader / Admin
+| Fitur | Deskripsi |
+|-------|-----------|
+| Dashboard Monitoring | Pantau produksi real-time |
+| Kelola Data Produksi | Tambah style, lot, target, assignment |
+| Monitoring Real Time | Output per operator & selisih target |
+| Monitoring Kendala | Kelola kendala & status |
+| Laporan Produksi | Generate & export PDF |
+
+---
+
+## 🛠️ Teknologi
+
+| Frontend | Backend | Deployment |
+|----------|---------|------------|
+| React 18 | Supabase | Netlify |
+| Vite | PostgreSQL | Vercel |
+| React Router | - | - |
+| CSS3 | - | - |
+
+---
+
+## 🗄️ Struktur Database
+
+```sql
+profiles (id, name, role, employee_id, created_at)
+styles (id, name, target_per_hour, process_type, created_at)
+lots (id, style_id, lot_number, target_total, priority, status, created_at)
+assignments (id, operator_id, lot_id, assigned_date, active)
+hourly_outputs (id, operator_id, lot_id, jam, qty, style, remark, created_at)
+constraints (id, operator_id, lot_id, jenis, durasi, keterangan, jam, status, leader_note, created_at)
