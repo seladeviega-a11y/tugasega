@@ -10,19 +10,17 @@ const OPInput = () => {
   const { user } = useAuth();
   const { hourlyOutputs, loadHourlyOutputs, createHourlyOutput, lots } = useProductions();
   const [qty, setQty] = useState('');
-  const [selectedStyle, setSelectedStyle] = useState('IVYS / HCPS');
+  const [selectedStyle, setSelectedStyle] = useState('');
   const [selectedLot, setSelectedLot] = useState('');
   const [loading, setLoading] = useState(false);
   const [todayOutputs, setTodayOutputs] = useState([]);
   const [totalOutput, setTotalOutput] = useState(0);
   const currentHour = getCurrentHour();
 
-  // Load data saat pertama kali
   useEffect(() => {
     fetchData();
   }, []);
 
-  // Refresh data ketika hourlyOutputs berubah
   useEffect(() => {
     const userOutputs = hourlyOutputs.filter(o => o.operator_id === user?.id);
     setTodayOutputs(userOutputs);
@@ -43,24 +41,33 @@ const OPInput = () => {
       return;
     }
 
+    if (!selectedStyle) {
+      toast.error('Masukkan style');
+      return;
+    }
+
+    if (!selectedLot) {
+      toast.error('Masukkan lot / batch');
+      return;
+    }
+
     setLoading(true);
     try {
       const result = await createHourlyOutput({
         operator_id: user?.id,
-        lot_id: selectedLot || null,
+        lot_id: null,
         jam: currentHour,
         qty: parseInt(qty),
         style: selectedStyle,
+        lot: selectedLot,
         remark: '-'
       });
       
       console.log('✅ Data tersimpan:', result);
-      
-      // 🔥 REFRESH DATA SETELAH INPUT
       await fetchData();
-      
-      // Reset form
       setQty('');
+      setSelectedStyle('');
+      setSelectedLot('');
       toast.success(`✅ Input ${currentHour} berhasil disimpan!`);
       
     } catch (error) {
@@ -87,12 +94,12 @@ const OPInput = () => {
             <div style={{ fontWeight: 700, marginTop: '4px' }}>{user?.name || 'User'}</div>
           </div>
           <div>
-            <div className="text-label">Style Aktif</div>
-            <div style={{ fontWeight: 700, marginTop: '4px' }}>{selectedStyle}</div>
+            <div className="text-label">Style</div>
+            <div style={{ fontWeight: 700, marginTop: '4px' }}>{selectedStyle || '-'}</div>
           </div>
           <div>
-            <div className="text-label">Process</div>
-            <div style={{ fontWeight: 700, marginTop: '4px' }}>Finishing</div>
+            <div className="text-label">Lot / Batch</div>
+            <div style={{ fontWeight: 700, marginTop: '4px' }}>{selectedLot || '-'}</div>
           </div>
           <div>
             <div className="text-label">Target / Jam</div>
@@ -133,32 +140,30 @@ const OPInput = () => {
             </div>
 
             <form onSubmit={handleSubmit}>
+              {/* 🔥 STYLE MANUAL - TEXT INPUT */}
               <div className="form-group">
                 <label className="field-label">Style</label>
-                <select 
-                  value={selectedStyle} 
+                <input
+                  type="text"
+                  value={selectedStyle}
                   onChange={(e) => setSelectedStyle(e.target.value)}
-                >
-                  <option>IVYS / HCPS</option>
-                  <option>POLO-NAVY-M04</option>
-                  <option>CORP-LOGO-A</option>
-                  <option>TECH-SUMMIT-CAP</option>
-                </select>
+                  placeholder="Contoh: IVYS / HCPS"
+                  className="form-control"
+                  required
+                />
               </div>
 
+              {/* 🔥 LOT MANUAL - TEXT INPUT */}
               <div className="form-group">
                 <label className="field-label">Lot / Batch</label>
-                <select 
-                  value={selectedLot} 
+                <input
+                  type="text"
+                  value={selectedLot}
                   onChange={(e) => setSelectedLot(e.target.value)}
-                >
-                  <option value="">Pilih Lot</option>
-                  {lots.map(lot => (
-                    <option key={lot.id} value={lot.id}>
-                      {lot.lot_number} - {lot.styles?.name || 'Unknown'}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Contoh: 503 + 568"
+                  className="form-control"
+                  required
+                />
               </div>
 
               <div className="form-group">
@@ -210,7 +215,7 @@ const OPInput = () => {
               <div>
                 <div className="notice-title">INFO</div>
                 <div className="notice-text">
-                  Data akan langsung muncul di riwayat setelah disimpan.
+                  Style dan Lot/Batch diisi manual sesuai produksi.
                 </div>
               </div>
             </div>
