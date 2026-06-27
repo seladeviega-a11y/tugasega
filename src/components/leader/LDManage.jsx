@@ -39,7 +39,6 @@ const LDManage = () => {
     operator_ids: []
   });
 
-  // Ambil daftar operator dari database
   const [operators, setOperators] = useState([]);
 
   useEffect(() => {
@@ -87,26 +86,40 @@ const LDManage = () => {
     setFormData({ ...formData, [id]: value });
   };
 
-  const handleOperatorSelect = (e) => {
-    const options = e.target.options;
-    const selected = [];
-    for (let i = 0; i < options.length; i++) {
-      if (options[i].selected) {
-        selected.push(options[i].value);
-      }
+  // 🔥 TAMBAH OPERATOR KE LIST (Klik operator)
+  const handleAddOperator = (operatorId) => {
+    if (!formData.operator_ids.includes(operatorId)) {
+      setFormData({
+        ...formData,
+        operator_ids: [...formData.operator_ids, operatorId]
+      });
     }
-    setFormData({ ...formData, operator_ids: selected });
   };
 
-  const handleEditOperatorSelect = (e) => {
-    const options = e.target.options;
-    const selected = [];
-    for (let i = 0; i < options.length; i++) {
-      if (options[i].selected) {
-        selected.push(options[i].value);
-      }
+  // 🔥 HAPUS OPERATOR DARI LIST (Klik chip)
+  const handleRemoveOperator = (operatorId) => {
+    setFormData({
+      ...formData,
+      operator_ids: formData.operator_ids.filter(id => id !== operatorId)
+    });
+  };
+
+  // 🔥 EDIT - Tambah Operator ke List
+  const handleEditAddOperator = (operatorId) => {
+    if (!editData.operator_ids.includes(operatorId)) {
+      setEditData({
+        ...editData,
+        operator_ids: [...editData.operator_ids, operatorId]
+      });
     }
-    setEditData({ ...editData, operator_ids: selected });
+  };
+
+  // 🔥 EDIT - Hapus Operator dari List
+  const handleEditRemoveOperator = (operatorId) => {
+    setEditData({
+      ...editData,
+      operator_ids: editData.operator_ids.filter(id => id !== operatorId)
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -114,7 +127,6 @@ const LDManage = () => {
     setLoading(true);
     
     try {
-      // 1. Buat style baru
       const { data: styleData, error: styleError } = await supabase
         .from('styles')
         .insert({
@@ -127,7 +139,6 @@ const LDManage = () => {
 
       if (styleError) throw styleError;
 
-      // 2. Buat lot
       const lotData = {
         style_id: styleData.id,
         lot_number: formData.lot_number,
@@ -144,7 +155,6 @@ const LDManage = () => {
 
       if (lotError) throw lotError;
 
-      // 3. Buat assignment untuk setiap operator yang dipilih
       if (formData.operator_ids.length > 0) {
         const assignmentsData = formData.operator_ids.map(opId => ({
           operator_id: opId,
@@ -173,7 +183,6 @@ const LDManage = () => {
     }
   };
 
-  // 🔥 AKHIRI PRODUKSI
   const handleEndProduction = async (lotId) => {
     if (!confirm('Yakin ingin mengakhiri produksi ini?')) return;
 
@@ -185,7 +194,6 @@ const LDManage = () => {
 
       if (error) throw error;
 
-      // Nonaktifkan assignment
       await supabase
         .from('assignments')
         .update({ active: false })
@@ -199,9 +207,9 @@ const LDManage = () => {
     }
   };
 
-  // 🔥 EDIT PRODUKSI
   const handleEdit = (lot) => {
     setEditingLot(lot);
+    const lotAssignments = assignments.filter(a => a.lot_id === lot.id && a.active);
     setEditData({
       id: lot.id,
       style: lot.styles?.name || '',
@@ -209,9 +217,7 @@ const LDManage = () => {
       target_total: lot.target_total || '',
       priority: lot.priority || 'Normal',
       status: lot.status || 'Berjalan',
-      operator_ids: assignments
-        .filter(a => a.lot_id === lot.id && a.active)
-        .map(a => a.operator_id)
+      operator_ids: lotAssignments.map(a => a.operator_id)
     });
     setShowEditForm(true);
   };
@@ -221,7 +227,6 @@ const LDManage = () => {
     setLoading(true);
 
     try {
-      // Update lot
       const { error: lotError } = await supabase
         .from('lots')
         .update({
@@ -234,14 +239,11 @@ const LDManage = () => {
 
       if (lotError) throw lotError;
 
-      // Update assignments
-      // Hapus assignment lama
       await supabase
         .from('assignments')
         .delete()
         .eq('lot_id', editData.id);
 
-      // Buat assignment baru
       if (editData.operator_ids.length > 0) {
         const assignmentsData = editData.operator_ids.map(opId => ({
           operator_id: opId,
@@ -282,15 +284,20 @@ const LDManage = () => {
     });
   };
 
-  // Status badge mapping
   const getStatusBadge = (status) => {
     const map = {
-      'Berjalan': <Badge type="prog" dot>Berjalan</Badge>,
+      'Berjalan': <Badge type="prog" dot>Sedang Berjalan</Badge>,
       'Selesai': <Badge type="run">Selesai</Badge>,
       'Tertunda': <Badge type="sched">Tertunda</Badge>,
       'Scheduled': <Badge type="sched">Tertunda</Badge>
     };
     return map[status] || <Badge type="sched">{status || 'Tertunda'}</Badge>;
+  };
+
+  // Dapatkan nama operator dari ID
+  const getOperatorName = (id) => {
+    const op = operators.find(o => o.id === id);
+    return op ? `${op.name} (${op.employee_id})` : id;
   };
 
   return (
@@ -300,11 +307,9 @@ const LDManage = () => {
           <h1>Kelola Data Produksi</h1>
           <p>Tambah dan atur style, lot, target, dan penugasan operator.</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-          <Button variant="primary" onClick={() => setShowForm(!showForm)}>
-            {showForm ? '✕ Tutup Form' : '+ Tambah Data Produksi'}
-          </Button>
-        </div>
+        <Button variant="primary" onClick={() => setShowForm(!showForm)}>
+          {showForm ? '✕ Tutup Form' : '+ Tambah Data Produksi'}
+        </Button>
       </div>
 
       {/* FORM TAMBAH PRODUKSI */}
@@ -365,22 +370,48 @@ const LDManage = () => {
 
             <div className="form-row">
               <div className="form-group">
-                <label className="field-label">Operator Ditugaskan</label>
-                <select
-                  id="operator_ids"
-                  multiple
-                  value={formData.operator_ids}
-                  onChange={handleOperatorSelect}
-                  style={{ height: '100px' }}
-                >
+                <label className="field-label">Pilih Operator</label>
+                {/* 🔥 LIST OPERATOR - Klik untuk tambah */}
+                <div style={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: '8px',
+                  padding: '10px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  minHeight: '50px',
+                  maxHeight: '120px',
+                  overflowY: 'auto',
+                  background: 'var(--bg)'
+                }}>
                   {operators.map(op => (
-                    <option key={op.id} value={op.id}>
+                    <div
+                      key={op.id}
+                      onClick={() => handleAddOperator(op.id)}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        background: formData.operator_ids.includes(op.id) ? 'var(--accent)' : 'var(--border)',
+                        color: formData.operator_ids.includes(op.id) ? '#fff' : 'var(--text)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        transition: 'all 0.15s',
+                        userSelect: 'none',
+                        border: 'none'
+                      }}
+                    >
                       {op.name} ({op.employee_id})
-                    </option>
+                    </div>
                   ))}
-                </select>
+                  {operators.length === 0 && (
+                    <div style={{ color: 'var(--sub)', fontSize: '12px' }}>
+                      Belum ada operator. Daftarkan operator dulu.
+                    </div>
+                  )}
+                </div>
                 <div style={{ fontSize: '11px', color: 'var(--sub)', marginTop: '4px' }}>
-                  Ctrl+Click untuk pilih multiple operator
+                  Klik operator untuk tambah ke daftar
                 </div>
               </div>
               <div className="form-group">
@@ -396,6 +427,48 @@ const LDManage = () => {
                 </select>
               </div>
             </div>
+
+            {/* 🔥 LIST OPERATOR YANG DIPILIH (CHIP) */}
+            {formData.operator_ids.length > 0 && (
+              <div style={{ marginBottom: '14px' }}>
+                <label className="field-label">Operator Dipilih</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {formData.operator_ids.map(id => {
+                    const op = operators.find(o => o.id === id);
+                    return (
+                      <div
+                        key={id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          background: 'var(--accent)',
+                          color: '#fff',
+                          fontSize: '12px',
+                          fontWeight: 600
+                        }}
+                      >
+                        {op ? `${op.name} (${op.employee_id})` : id}
+                        <span
+                          onClick={() => handleRemoveOperator(id)}
+                          style={{
+                            cursor: 'pointer',
+                            fontSize: '14px',
+                            fontWeight: 'bold',
+                            color: '#fff',
+                            opacity: 0.8
+                          }}
+                        >
+                          ✕
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }} type="button">
@@ -475,24 +548,87 @@ const LDManage = () => {
                   <option value="Selesai">Selesai</option>
                 </select>
               </div>
+
+              {/* 🔥 EDIT - Pilih Operator */}
               <div className="form-group">
-                <label className="field-label">Operator</label>
-                <select
-                  multiple
-                  value={editData.operator_ids}
-                  onChange={handleEditOperatorSelect}
-                  style={{ height: '100px' }}
-                >
+                <label className="field-label">Pilih Operator</label>
+                <div style={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap', 
+                  gap: '8px',
+                  padding: '10px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  minHeight: '50px',
+                  maxHeight: '120px',
+                  overflowY: 'auto',
+                  background: 'var(--bg)'
+                }}>
                   {operators.map(op => (
-                    <option key={op.id} value={op.id}>
+                    <div
+                      key={op.id}
+                      onClick={() => handleEditAddOperator(op.id)}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '20px',
+                        background: editData.operator_ids.includes(op.id) ? 'var(--accent)' : 'var(--border)',
+                        color: editData.operator_ids.includes(op.id) ? '#fff' : 'var(--text)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        transition: 'all 0.15s',
+                        userSelect: 'none',
+                        border: 'none'
+                      }}
+                    >
                       {op.name} ({op.employee_id})
-                    </option>
+                    </div>
                   ))}
-                </select>
-                <div style={{ fontSize: '11px', color: 'var(--sub)', marginTop: '4px' }}>
-                  Ctrl+Click untuk pilih multiple operator
                 </div>
               </div>
+
+              {/* 🔥 EDIT - LIST OPERATOR DIPILIH */}
+              {editData.operator_ids.length > 0 && (
+                <div style={{ marginBottom: '14px' }}>
+                  <label className="field-label">Operator Dipilih</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {editData.operator_ids.map(id => {
+                      const op = operators.find(o => o.id === id);
+                      return (
+                        <div
+                          key={id}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 12px',
+                            borderRadius: '20px',
+                            background: 'var(--accent)',
+                            color: '#fff',
+                            fontSize: '12px',
+                            fontWeight: 600
+                          }}
+                        >
+                          {op ? `${op.name} (${op.employee_id})` : id}
+                          <span
+                            onClick={() => handleEditRemoveOperator(id)}
+                            style={{
+                              cursor: 'pointer',
+                              fontSize: '14px',
+                              fontWeight: 'bold',
+                              color: '#fff',
+                              opacity: 0.8
+                            }}
+                          >
+                            ✕
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
                 <Button variant="outline" onClick={() => { setShowEditForm(false); setEditingLot(null); }} type="button">
                   Batal
@@ -579,7 +715,7 @@ const LDManage = () => {
                             <button
                               className="btn btn-sm btn-outline"
                               onClick={() => handleEndProduction(lot.id)}
-                              style={{ fontSize: '10px', padding: '4px 8px' }}
+                              style={{ fontSize: '10px', padding: '4px 8px', borderColor: 'var(--danger)', color: 'var(--danger)' }}
                             >
                               Akhiri
                             </button>
