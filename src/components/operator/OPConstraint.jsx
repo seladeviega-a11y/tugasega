@@ -31,7 +31,6 @@ const OPConstraint = () => {
 
   const userConstraints = (constraints || []).filter(c => c.operator_id === user?.id);
 
-  // Status badge mapping
   const getStatusBadge = (status) => {
     const map = {
       'Pending': <Badge type="stop">Pending</Badge>,
@@ -165,18 +164,8 @@ const OPConstraint = () => {
         </div>
 
         <div>
-          <div style={{ background: 'var(--primary)', color: '#fff', borderRadius: 'var(--r)', padding: '18px' }}>
-            <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '6px' }}>
-              Butuh Bantuan Segera?
-            </div>
-            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,.6)', marginBottom: '14px' }}>
-              Panggil teknisi ke lokasi Anda.
-            </div>
-            <Button variant="accent" className="w-full">
-              👥 Panggil Teknisi
-            </Button>
-          </div>
-
+          {/* ❌ PANGGIL TEKNISI DIHAPUS */}
+          
           <div className="card mt-12">
             <div className="st">Kendala Hari Ini</div>
             {userConstraints.length === 0 ? (
@@ -198,7 +187,6 @@ const OPConstraint = () => {
                       {getStatusBadge(c.status)}
                     </div>
                   </div>
-                  {/* 🆕 NOTE DARI LEADER */}
                   {c.leader_note && (
                     <div style={{ 
                       marginTop: '6px', 

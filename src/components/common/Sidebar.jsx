@@ -14,14 +14,11 @@ const Sidebar = ({ role, isOpen, onClose }) => {
     console.log('Sidebar isOpen:', isOpen);
   }, [isOpen]);
 
-  // 🔥 HANDLE NAVIGASI - PAKAI FUNCTION BIASA
   const goToPage = (id) => {
     console.log('🔵 MENU DI KLIK:', id);
     const path = `/${role}/${id}`;
-    console.log('🔵 Navigasi ke:', path);
     navigate(path);
     
-    // Tutup sidebar
     setTimeout(() => {
       const sidebar = document.getElementById('sidebar');
       if (sidebar) sidebar.classList.remove('open');
@@ -35,12 +32,6 @@ const Sidebar = ({ role, isOpen, onClose }) => {
     console.log('🔴 LOGOUT DI KLIK');
     await logout();
     navigate('/login');
-    if (onClose) onClose();
-  };
-
-  const handleEmergencyStop = () => {
-    console.log('🔴 EMERGENCY STOP DI KLIK');
-    alert('⏹ Emergency Stop Triggered!');
     if (onClose) onClose();
   };
 
@@ -60,7 +51,7 @@ const Sidebar = ({ role, isOpen, onClose }) => {
     >
       <div className="sb-logo">
         <div className="sb-logo-icon">🪡</div>
-        egaaSLDV
+        StitchControl AI
       </div>
       <div className="sb-role">
         Role Aktif
@@ -103,30 +94,8 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         })}
       </nav>
       
+      {/* ❌ EMERGENCY STOP DIHAPUS */}
       <div className="sb-bottom" style={{ padding: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <button 
-          className="btn-emstop" 
-          onClick={handleEmergencyStop}
-          onTouchStart={handleEmergencyStop}
-          style={{ 
-            touchAction: 'manipulation',
-            width: '100%',
-            padding: '12px',
-            fontSize: '14px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            border: 'none',
-            borderRadius: '8px',
-            background: '#e53e3e',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px'
-          }}
-        >
-          ⏹ Emergency Stop
-        </button>
         <div 
           className="nav-item" 
           onClick={handleLogout}

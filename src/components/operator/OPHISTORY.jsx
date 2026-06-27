@@ -4,8 +4,8 @@ import { useProductions } from '../../hooks/useProductions';
 import Card from '../common/Card';
 import Badge from '../common/Badge';
 import ProgressBar from '../common/ProgressBar';
-import { getIndonesianDate, getToday } from '../../utils/dateUtils';
 import { formatNumber } from '../../utils/helpers';
+import { formatDate } from '../../utils/dateUtils';
 
 const OPHISTORY = () => {
   const { user } = useAuth();
@@ -15,10 +15,11 @@ const OPHISTORY = () => {
   const [totalOutput, setTotalOutput] = useState(0);
   const [totalHours, setTotalHours] = useState(0);
   const [overtimeHours, setOvertimeHours] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(selectedDate);
+  }, [selectedDate]);
 
   useEffect(() => {
     if (hourlyOutputs.length > 0 || !loading) {
@@ -27,22 +28,19 @@ const OPHISTORY = () => {
       const total = outputs.reduce((sum, o) => sum + (o.qty || 0), 0);
       setTotalOutput(total);
       
-      // 🔥 HITUNG JAM KERJA & LEMBUR
       const uniqueHours = new Set(outputs.map(o => o.jam?.split(':')[0]));
       const hoursWorked = uniqueHours.size;
       setTotalHours(hoursWorked);
       
-      // Lembur jika lebih dari 8 jam
       const overtime = Math.max(0, hoursWorked - 8);
       setOvertimeHours(overtime);
     }
   }, [hourlyOutputs, user?.id, loading]);
 
-  const fetchData = async () => {
+  const fetchData = async (date) => {
     setLoading(true);
     try {
-      const today = getToday();
-      await loadHourlyOutputs(today);
+      await loadHourlyOutputs(date);
     } catch (error) {
       console.error('Error loading history:', error);
     } finally {
@@ -54,26 +52,47 @@ const OPHISTORY = () => {
   const achievement = targetDaily > 0 ? (totalOutput / targetDaily * 100) : 0;
   const isOvertime = overtimeHours > 0;
 
+  const handleDateChange = (e) => {
+    setSelectedDate(e.target.value);
+  };
+
   return (
     <div>
       <div className="ph">
         <div>
           <h1>Riwayat Produksi</h1>
-          <p>Data output yang telah diinput pada hari ini.</p>
+          <p>Data output yang telah diinput.</p>
         </div>
-        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
-          📅 {getIndonesianDate()}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={handleDateChange}
+            style={{
+              padding: '8px 12px',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              fontSize: '13px',
+              background: '#fff'
+            }}
+          />
+          <button
+            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            className="btn btn-outline btn-sm"
+          >
+            Hari Ini
+          </button>
         </div>
       </div>
 
       <div className="two-col">
         <div>
-          <Card title="Detail Input Per Jam">
+          <Card title={`Detail Input Per Jam - ${formatDate(selectedDate)}`}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '20px', color: 'var(--sub)' }}>Loading...</div>
             ) : userOutputs.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '20px', color: 'var(--sub)' }}>
-                Belum ada data input hari ini.
+                Belum ada data input pada tanggal ini.
               </div>
             ) : (
               <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
@@ -127,7 +146,7 @@ const OPHISTORY = () => {
         </div>
 
         <div>
-          <Card title="Rekap Harian">
+          <Card title={`Rekap Harian - ${formatDate(selectedDate)}`}>
             <div className="sum-row">
               <span>Total Output</span>
               <span className="sum-val">{formatNumber(totalOutput)} Pcs</span>
@@ -151,7 +170,6 @@ const OPHISTORY = () => {
               <span className="sum-val">0</span>
             </div>
             
-            {/* 🆕 JAM KERJA */}
             <div className="sum-row" style={{ borderTop: '2px solid var(--accent)', marginTop: '4px', paddingTop: '12px' }}>
               <span style={{ fontWeight: 600 }}>⏱ Jam Kerja</span>
               <span className="sum-val" style={{ fontSize: '16px' }}>
@@ -159,7 +177,6 @@ const OPHISTORY = () => {
               </span>
             </div>
             
-            {/* 🆕 LEMBUR */}
             <div className="sum-row">
               <span style={{ fontWeight: 600, color: isOvertime ? 'var(--danger)' : 'var(--sub)' }}>
                 {isOvertime ? '🔴 Lembur' : 'Lembur'}
@@ -183,13 +200,13 @@ const OPHISTORY = () => {
 
           <Card title="Kendala Tercatat" className="mt-12">
             <div style={{ color: 'var(--sub)', fontSize: '12px', textAlign: 'center', padding: '10px 0' }}>
-              Tidak ada kendala hari ini. ✓
+              Tidak ada kendala pada tanggal ini. ✓
             </div>
           </Card>
 
           <button 
             className="btn btn-outline w-full mt-12"
-            onClick={fetchData}
+            onClick={() => fetchData(selectedDate)}
           >
             🔄 Refresh Data
           </button>
