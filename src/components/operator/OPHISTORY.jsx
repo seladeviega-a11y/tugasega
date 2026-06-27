@@ -1,0 +1,177 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../hooks/useAuth';
+import { useProductions } from '../../hooks/useProductions';
+import Card from '../common/Card';
+import Badge from '../common/Badge';
+import ProgressBar from '../common/ProgressBar';
+import { getIndonesianDate, getToday } from '../../utils/dateUtils';
+import { formatNumber } from '../../utils/helpers';
+
+const OPHISTORY = () => {
+  const { user } = useAuth();
+  const { hourlyOutputs, loadHourlyOutputs } = useProductions();
+  const [loading, setLoading] = useState(true);
+  const [userOutputs, setUserOutputs] = useState([]);
+  const [totalOutput, setTotalOutput] = useState(0);
+
+  // 🔥 LOAD DATA SETIAP KOMPONEN DI-MOUNT
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // 🔥 UPDATE DATA KETIKA hourlyOutputs BERUBAH
+  useEffect(() => {
+    if (hourlyOutputs.length > 0 || !loading) {
+      const outputs = hourlyOutputs.filter(o => o.operator_id === user?.id);
+      setUserOutputs(outputs);
+      const total = outputs.reduce((sum, o) => sum + (o.qty || 0), 0);
+      setTotalOutput(total);
+    }
+  }, [hourlyOutputs, user?.id, loading]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const today = getToday();
+      await loadHourlyOutputs(today);
+    } catch (error) {
+      console.error('Error loading history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const targetDaily = 1080;
+  const achievement = targetDaily > 0 ? (totalOutput / targetDaily * 100) : 0;
+
+  return (
+    <div>
+      <div className="ph">
+        <div>
+          <h1>Riwayat Produksi</h1>
+          <p>Data output yang telah diinput pada hari ini.</p>
+        </div>
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: '8px', padding: '8px 14px', fontSize: '13px' }}>
+          📅 {getIndonesianDate()}
+        </div>
+      </div>
+
+      <div className="two-col">
+        <div>
+          <Card title="Detail Input Per Jam">
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--sub)' }}>Loading...</div>
+            ) : userOutputs.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: 'var(--sub)' }}>
+                Belum ada data input hari ini.
+                <div style={{ marginTop: '10px' }}>
+                  <button 
+                    className="btn btn-primary btn-sm"
+                    onClick={() => window.location.reload()}
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Jam</th>
+                    <th>Style</th>
+                    <th>Output (Qty)</th>
+                    <th>Target</th>
+                    <th>Selisih</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userOutputs.map((entry, idx) => {
+                    const target = 135;
+                    const qty = entry.qty || 0;
+                    const selisih = qty - target;
+                    let status;
+                    
+                    if (qty === 0) {
+                      status = <Badge type="sched">Start Up</Badge>;
+                    } else if (qty >= target) {
+                      status = <Badge type="prog">Tercapai</Badge>;
+                    } else {
+                      status = <Badge type="pend">Di Bawah Target</Badge>;
+                    }
+                    
+                    return (
+                      <tr key={entry.id || idx}>
+                        <td>{entry.jam || '--:--'}</td>
+                        <td>{entry.style || '-'}</td>
+                        <td style={{ fontWeight: 700 }}>{qty}</td>
+                        <td>{target}</td>
+                        <td style={{ 
+                          color: selisih >= 0 ? 'var(--accent)' : 'var(--danger)', 
+                          fontWeight: 600 
+                        }}>
+                          {selisih >= 0 ? '+' : ''}{selisih}
+                        </td>
+                        <td>{status}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </div>
+
+        <div>
+          <Card title="Rekap Harian">
+            <div className="sum-row">
+              <span>Total Output</span>
+              <span className="sum-val">{formatNumber(totalOutput)} Pcs</span>
+            </div>
+            <div className="sum-row">
+              <span>Jumlah Input</span>
+              <span className="sum-val">{userOutputs.length} kali</span>
+            </div>
+            <div className="sum-row">
+              <span>Target Harian</span>
+              <span className="sum-val">{formatNumber(targetDaily)} Pcs</span>
+            </div>
+            <div className="sum-row">
+              <span>Pencapaian</span>
+              <span className="sum-val" style={{ color: 'var(--warn)' }}>
+                {achievement.toFixed(1)}%
+              </span>
+            </div>
+            <div className="sum-row">
+              <span>Kendala Tercatat</span>
+              <span className="sum-val">0</span>
+            </div>
+            <div style={{ marginTop: '12px' }}>
+              <ProgressBar 
+                value={achievement} 
+                label="Progress Harian" 
+                color={achievement >= 100 ? 'prog-g' : achievement >= 75 ? 'prog-o' : 'prog-r'} 
+              />
+            </div>
+          </Card>
+
+          <Card title="Kendala Tercatat" className="mt-12">
+            <div style={{ color: 'var(--sub)', fontSize: '12px', textAlign: 'center', padding: '10px 0' }}>
+              Tidak ada kendala hari ini. ✓
+            </div>
+          </Card>
+
+          {/* 🔥 TOMBOL REFRESH MANUAL */}
+          <button 
+            className="btn btn-outline w-full mt-12"
+            onClick={fetchData}
+          >
+            🔄 Refresh Data
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default OPHISTORY;
