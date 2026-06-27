@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
@@ -118,7 +118,7 @@ function AppRoutes() {
         {/* PUBLIC */}
         <Route path="/login" element={<Login />} />
         
-        {/* OPERATOR */}
+        {/* OPERATOR ROUTES */}
         <Route 
           path="/operator" 
           element={
@@ -134,7 +134,7 @@ function AppRoutes() {
           <Route index element={<Navigate to="/operator/dashboard" replace />} />
         </Route>
         
-        {/* LEADER */}
+        {/* LEADER ROUTES */}
         <Route 
           path="/leader" 
           element={
@@ -155,11 +155,14 @@ function AppRoutes() {
         <Route 
           path="/" 
           element={
-            <Navigate to={
-              user 
-                ? (user.role === 'operator' ? '/operator/dashboard' : '/leader/dashboard') 
-                : '/login'
-            } replace />
+            <Navigate 
+              to={
+                user 
+                  ? (user.role === 'operator' ? '/operator/dashboard' : '/leader/dashboard') 
+                  : '/login'
+              } 
+              replace 
+            />
           } 
         />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -173,7 +176,7 @@ function AppRoutes() {
 // ============================================
 function App() {
   return (
-    <HashRouter>
+    <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
         <Toaster 
@@ -189,7 +192,7 @@ function App() {
           }} 
         />
       </AuthProvider>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
 
