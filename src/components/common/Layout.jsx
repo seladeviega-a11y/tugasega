@@ -13,7 +13,21 @@ const Layout = ({ role }) => {
   return (
     <div className="app-container">
       {/* Overlay for mobile */}
-      <div className={`overlay ${sidebarOpen ? 'open' : ''}`} onClick={closeSidebar}></div>
+      <div 
+        className={`overlay ${sidebarOpen ? 'open' : ''}`} 
+        id="overlay"
+        onClick={closeSidebar}
+        style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.4)',
+          zIndex: 150,
+          display: sidebarOpen ? 'block' : 'none'
+        }}
+      ></div>
       
       {/* Sidebar */}
       <Sidebar role={role} isOpen={sidebarOpen} />
@@ -21,10 +35,10 @@ const Layout = ({ role }) => {
       {/* Topbar */}
       <Topbar role={role} onToggleSidebar={toggleSidebar} />
       
-      {/* Main Content - OUTLET untuk render halaman */}
+      {/* Main Content */}
       <div className="main">
         <div className="page">
-          <Outlet />  {/* ← Ini penting! */}
+          <Outlet />
         </div>
       </div>
       

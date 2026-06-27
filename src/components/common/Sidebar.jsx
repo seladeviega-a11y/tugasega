@@ -13,6 +13,11 @@ const Sidebar = ({ role, isOpen }) => {
   const handleNav = (id) => {
     console.log('Navigasi ke:', `/${role}/${id}`); // Debug
     navigate(`/${role}/${id}`);
+    // Tutup sidebar di mobile
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.classList.remove('open');
+    const overlay = document.getElementById('overlay');
+    if (overlay) overlay.classList.remove('open');
   };
 
   const handleLogout = async () => {
@@ -29,10 +34,10 @@ const Sidebar = ({ role, isOpen }) => {
   };
 
   return (
-    <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+    <aside className={`sidebar ${isOpen ? 'open' : ''}`} id="sidebar">
       <div className="sb-logo">
         <div className="sb-logo-icon">🪡</div>
-        jokiega
+        StitchControl AI
       </div>
       <div className="sb-role">
         Role Aktif
@@ -44,7 +49,10 @@ const Sidebar = ({ role, isOpen }) => {
             key={item.id}
             className={`nav-item ${isActive(item.id) ? 'active' : ''}`}
             onClick={() => handleNav(item.id)}
-            style={{ cursor: 'pointer' }}
+            style={{ 
+              cursor: 'pointer',
+              touchAction: 'manipulation' // Fix mobile
+            }}
           >
             <span className="ni">{item.icon}</span>
             {item.label}
@@ -55,7 +63,11 @@ const Sidebar = ({ role, isOpen }) => {
         <button className="btn-emstop" onClick={handleEmergencyStop}>
           ⏹ Emergency Stop
         </button>
-        <div className="nav-item" style={{ marginTop: '2px', cursor: 'pointer' }} onClick={handleLogout}>
+        <div 
+          className="nav-item" 
+          style={{ marginTop: '2px', cursor: 'pointer' }} 
+          onClick={handleLogout}
+        >
           <span className="ni">🚪</span> Logout
         </div>
       </div>

@@ -12,7 +12,7 @@ const Topbar = ({ role, onToggleSidebar }) => {
       {/* Desktop Topbar */}
       <div className="topbar desk-only">
         <div className="tb-search">
-          <span></span>
+          <span>🔍</span>
           <input type="text" placeholder="Cari style, batch, operator..." />
         </div>
         <div className="topbar-right">
@@ -33,10 +33,13 @@ const Topbar = ({ role, onToggleSidebar }) => {
       {/* Mobile Topbar */}
       <div className="mob-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span style={{ fontSize: '22px', cursor: 'pointer' }} onClick={onToggleSidebar}>
+          <span 
+            style={{ fontSize: '22px', cursor: 'pointer', touchAction: 'manipulation' }} 
+            onClick={onToggleSidebar}
+          >
             ☰
           </span>
-          <span style={{ fontSize: '16px', fontWeight: 700 }}>jokiega</span>
+          <span style={{ fontSize: '16px', fontWeight: 700 }}>StitchControl AI</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div className="tb-bell">

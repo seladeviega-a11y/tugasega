@@ -9,6 +9,7 @@ const BottomNav = ({ role }) => {
   const menu = role === 'operator' ? OPERATOR_MENU : LEADER_MENU.slice(0, 4);
 
   const handleNav = (id) => {
+    console.log('Bottom nav ke:', `/${role}/${id}`);
     navigate(`/${role}/${id}`);
   };
 
@@ -24,6 +25,10 @@ const BottomNav = ({ role }) => {
             key={item.id}
             className={`bn ${isActive(item.id) ? 'active' : ''}`}
             onClick={() => handleNav(item.id)}
+            style={{ 
+              cursor: 'pointer',
+              touchAction: 'manipulation'
+            }}
           >
             <div className="bn-ic">{item.icon}</div>
             <div>{item.label.split(' ')[0]}</div>
