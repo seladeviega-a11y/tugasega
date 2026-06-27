@@ -79,15 +79,15 @@ const OPDashboard = () => {
       </div>
 
       <div className="stats-grid">
-        <StatsCard label="Target / Jam" value={`${formatNumber(targetPerHour)} Pcs`} icon="🎯" />
+        <StatsCard label="Target / Jam" value={`${formatNumber(targetPerHour)} Pcs`} icon="" />
         <StatsCard 
           label="Output Hari Ini" 
           value={`${formatNumber(totalOutput)} Pcs`} 
           subtext={`${userOutputs.length} jam terekam`} 
           icon="" 
         />
-        <StatsCard label="Target Harian" value={`${formatNumber(targetDaily)} Pcs`} icon="📋" />
-        <StatsCard label="Pencapaian" value={`${achievement.toFixed(1)}%`} icon="⚡" />
+        <StatsCard label="Target Harian" value={`${formatNumber(targetDaily)} Pcs`} icon="" />
+        <StatsCard label="Pencapaian" value={`${achievement.toFixed(1)}%`} icon="" />
       </div>
 
       <div style={{ marginBottom: '16px' }}>
