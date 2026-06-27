@@ -8,14 +8,31 @@ import toast from 'react-hot-toast';
 
 const OPInput = () => {
   const { user } = useAuth();
-  const { hourlyOutputs, loadHourlyOutputs, createHourlyOutput } = useProductions();
+  const { hourlyOutputs, loadHourlyOutputs, createHourlyOutput, styles, loadStyles } = useProductions();
   const [qty, setQty] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('');
   const [selectedLot, setSelectedLot] = useState('');
   const [loading, setLoading] = useState(false);
   const [todayOutputs, setTodayOutputs] = useState([]);
   const [totalOutput, setTotalOutput] = useState(0);
+  const [targetPerHour, setTargetPerHour] = useState(135);
   const currentHour = getCurrentHour();
+
+  // 🔥 Ambil target per jam dari leader (tabel styles)
+  useEffect(() => {
+    const fetchTarget = async () => {
+      try {
+        await loadStyles();
+        if (styles && styles.length > 0) {
+          const firstStyle = styles[0];
+          setTargetPerHour(firstStyle.target_per_hour || 135);
+        }
+      } catch (error) {
+        console.error('Error loading target:', error);
+      }
+    };
+    fetchTarget();
+  }, [styles.length]);
 
   useEffect(() => {
     fetchData();
@@ -102,7 +119,10 @@ const OPInput = () => {
           </div>
           <div>
             <div className="text-label">Target / Jam</div>
-            <div style={{ fontWeight: 700, marginTop: '4px', color: 'var(--accent)' }}>135 Pcs</div>
+            {/* 🔥 TARGET PER JAM IKUT DATA LEADER */}
+            <div style={{ fontWeight: 700, marginTop: '4px', color: 'var(--accent)' }}>
+              {formatNumber(targetPerHour)} Pcs
+            </div>
           </div>
         </div>
       </div>
@@ -198,7 +218,6 @@ const OPInput = () => {
               <span style={{ fontSize: '13px' }}>Jumlah Input</span>
               <span className="sum-val">{todayOutputs.length} <span style={{ fontSize: '11px', color: 'var(--sub)' }}>kali</span></span>
             </div>
-            {/* ❌ EST. INCENTIVE DIHAPUS */}
           </div>
 
           <div className="notice">
