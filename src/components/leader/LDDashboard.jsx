@@ -111,18 +111,18 @@ const LDDashboard = () => {
           label="Total Target"
           value={`${formatNumber(totalTarget)} Pcs`}
           subtext="Target produksi hari ini"
-          icon="🎯"
+          icon=""
         />
         <StatsCard
           label="Total Output"
           value={`${formatNumber(totalOutput)} Pcs`}
           subtext={`Dari ${hourlyOutputs.length} input`}
-          icon="📦"
+          icon=""
         />
         <StatsCard
           label="% Pencapaian"
           value={`${achievement.toFixed(1)}%`}
-          icon="⚡"
+          icon=""
         />
         <StatsCard
           label="Status Produksi"

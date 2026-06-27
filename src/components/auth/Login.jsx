@@ -93,7 +93,7 @@ const Login = () => {
       <div className="auth-box">
         <div className="auth-logo">
           <div className="auth-logo-icon">🪡</div>
-          StitchControl AI
+          egaaSLDV
         </div>
         <div style={{ fontSize: '20px', fontWeight: 700, marginBottom: '4px' }}>
           {isRegister ? 'Daftar Akun Operator' : 'Selamat Datang'}

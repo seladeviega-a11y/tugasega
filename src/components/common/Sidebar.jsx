@@ -60,7 +60,7 @@ const Sidebar = ({ role, isOpen, onClose }) => {
     >
       <div className="sb-logo">
         <div className="sb-logo-icon">🪡</div>
-        StitchControl AI
+        egaaSLDV
       </div>
       <div className="sb-role">
         Role Aktif

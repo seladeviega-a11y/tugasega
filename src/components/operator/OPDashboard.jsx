@@ -84,7 +84,7 @@ const OPDashboard = () => {
           label="Output Hari Ini" 
           value={`${formatNumber(totalOutput)} Pcs`} 
           subtext={`${userOutputs.length} jam terekam`} 
-          icon="📦" 
+          icon="" 
         />
         <StatsCard label="Target Harian" value={`${formatNumber(targetDaily)} Pcs`} icon="📋" />
         <StatsCard label="Pencapaian" value={`${achievement.toFixed(1)}%`} icon="⚡" />
