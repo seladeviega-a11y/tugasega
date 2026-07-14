@@ -51,7 +51,7 @@ const Sidebar = ({ role, isOpen, onClose }) => {
     >
       <div className="sb-logo">
         <div className="sb-logo-icon">🪡</div>
-        egaaSLDV 
+        SIMPROFE 
       </div>
       <div className="sb-role">
         Role Aktif

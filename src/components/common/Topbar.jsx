@@ -45,7 +45,7 @@ const Topbar = ({ role, onToggleSidebar }) => {
           >
             ☰
           </span>
-          <span style={{ fontSize: '16px', fontWeight: 700 }}>egaaSLDV</span>
+          <span style={{ fontSize: '16px', fontWeight: 700 }}>SIMPROFE</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           {/* ❌ NOTIFIKASI DIHAPUS */}

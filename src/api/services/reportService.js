@@ -138,7 +138,7 @@ export const reportService = {
     doc.setFontSize(10);
     doc.setTextColor('#a0aec0');
     doc.text(`Dicetak: ${new Date().toLocaleString('id-ID')}`, 20, finalY + 20);
-    doc.text('egaaSLDV © 2026', pageWidth / 2, finalY + 20, { align: 'center' });
+    doc.text('SIMPROFE © 2026', pageWidth / 2, finalY + 20, { align: 'center' });
     
     return doc;
   }
